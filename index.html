@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compass New Tab · 重新定义你的新标签页</title>
+<meta name="description" content="Compass New Tab 是一款对标 Infinity 体验、从零独立开发的开源 Chrome 新标签页扩展。本地壁纸、四引擎五类别搜索、图标文件夹、多分页，数据全本地。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23101523'/%3E%3Cpath d='M32 8 L38 26 L56 32 L38 38 L32 56 L26 38 L8 32 L26 26 Z' fill='%23f5a623'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23f5a623'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#101523; --ink-soft:#1b2337; --ink-line:#2a3550;
+    --amber:#f5a623; --amber-deep:#e08c12;
+    --mint:#2ed6b1; --sky:#6aa9ff; --rose:#ff7b9c;
+    --paper:#f7f8fb; --card:#ffffff; --text:#232b3a; --text-soft:#5b6476; --muted:#8a93a6;
+    --radius:18px; --radius-s:10px;
+    --maxw:1120px;
+    --shadow:0 20px 50px rgba(16,21,35,.12);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;color:var(--text);background:var(--paper);line-height:1.65;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .nav{position:sticky;top:0;z-index:50;background:rgba(16,21,35,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--ink-line);color:#e9edf6}
+  .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:.2px;text-decoration:none}
+  .brand svg{width:26px;height:26px;display:block}
+  .nav-links{display:flex;align-items:center;gap:26px;font-size:14px}
+  .nav-links a{text-decoration:none;color:#cdd4e3;transition:color .2s}
+  .nav-links a:hover{color:#fff}
+  .nav-cta{display:inline-flex;align-items:center;gap:6px;background:var(--amber);color:#241a05;font-weight:700;font-size:13.5px;text-decoration:none;padding:9px 16px;border-radius:999px;transition:background .2s}
+  .nav-cta:hover{background:#ffc048}
+  @media(max-width:620px){.nav-links .hide-sm{display:none}}
+  .hero{position:relative;color:#eef1f8;overflow:hidden}
+  .hero-bg{position:absolute;inset:0;background:radial-gradient(120% 90% at 18% 8%,#2b3a63 0%,#171d34 46%,#101523 100%);}
+  .hero-bg::after{content:"";position:absolute;inset:0;background:radial-gradient(40% 50% at 82% 22%,rgba(46,214,177,.22),transparent 70%),radial-gradient(34% 42% at 18% 78%,rgba(106,169,255,.20),transparent 70%),radial-gradient(30% 40% at 78% 88%,rgba(245,166,35,.14),transparent 70%)}
+  .stars{position:absolute;inset:0;opacity:.5}
+  .hero .wrap{position:relative;padding-top:84px;padding-bottom:0;text-align:center}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.12em;color:#b9c2d8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:7px 14px;border-radius:999px;margin-bottom:26px}
+  .hero-eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 3px rgba(46,214,177,.18)}
+  h1{font-size:clamp(34px,6vw,58px);line-height:1.12;margin:0 auto 18px;max-width:820px;font-weight:800;letter-spacing:-.5px}
+  h1 .hl{background:linear-gradient(90deg,var(--amber),#ffc048);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero-sub{max-width:640px;margin:0 auto 34px;font-size:clamp(15px,2.2vw,18px);color:#c2cade}
+  .hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:58px}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:700;text-decoration:none;padding:14px 26px;border-radius:999px;transition:transform .15s,box-shadow .2s,background .2s;cursor:pointer;border:none}
+  .btn:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+  .btn-primary{background:var(--amber);color:#241a05}
+  .btn-primary:hover{background:#ffc048;transform:translateY(-2px);box-shadow:0 14px 30px rgba(245,166,35,.35)}
+  .btn-ghost{background:rgba(255,255,255,.08);color:#eef1f8;border:1px solid rgba(255,255,255,.22)}
+  .btn-ghost:hover{background:rgba(255,255,255,.15);transform:translateY(-2px)}
+  .mock-wrap{position:relative;margin:0 auto;max-width:880px;transform:translateY(0)}
+  .mock-glare{position:absolute;left:6%;right:6%;bottom:0;height:40%;background:radial-gradient(60% 70% at 50% 100%,rgba(245,166,35,.16),transparent 70%);filter:blur(30px)}
+  .browser{position:relative;background:#fff;border-radius:14px;box-shadow:var(--shadow);overflow:hidden;border:1px solid rgba(255,255,255,.14);text-align:left}
+  .browser-bar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:#f1f2f6;border-bottom:1px solid #e5e7ee}
+  .dots{display:flex;gap:6px}
+  .dots i{width:10px;height:10px;border-radius:50%}
+  .dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+  .addr{flex:1;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e2e4ec;border-radius:7px;padding:4px 10px;font-size:12px;color:#8a93a6;max-width:380px}
+  .addr svg{width:12px;height:12px;fill:#c3c8d5}
+  .ntab{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,#22314f 0%,#3b2a54 40%,#7a3b56 72%,#d08b4a 100%);}
+  .ntab::before{content:"";position:absolute;inset:0;background:radial-gradient(80% 60% at 50% 120%,rgba(255,255,255,.20),transparent 60%)}
+  .ntab-body{position:relative;padding:6% 7% 0;color:#fff;height:100%;display:flex;flex-direction:column}
+  .ntab-search{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.95);color:#333;border-radius:999px;padding:9px 18px;max-width:420px;font-size:13px;margin-bottom:7%}
+  .ntab-search svg{width:14px;height:14px;fill:#9aa3b5}
+  .ntab-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3%;max-width:560px}
+  .ntab-icon{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px}
+  .ntab-icon b{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;font-weight:600}
+  .ntab-icon span{color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.4)}
+  .ntab-dots{position:absolute;bottom:5%;left:50%;transform:translateX(-50%);display:flex;gap:5px}
+  .ntab-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5)}
+  .ntab-dots i.on{background:#fff;width:14px;border-radius:3px}
+  .windmill{position:absolute;right:4%;bottom:4%;width:26px;height:26px;color:#fff}
+  .windmill svg{width:100%;height:100%}
+  section{padding:84px 0}
+  .sec-head{max-width:660px;margin:0 auto 52px;text-align:center}
+  .sec-kicker{font-size:13px;font-weight:700;letter-spacing:.14em;color:var(--amber-deep);margin-bottom:12px}
+  h2{font-size:clamp(26px,4vw,38px);line-height:1.2;margin:0 0 16px;font-weight:800;letter-spacing:-.3px;color:var(--ink)}
+  .sec-sub{color:var(--text-soft);font-size:16px;margin:0}
+  .feature-grid{display:grid;grid-template-columns:1fr;gap:20px}
+  @media(min-width:900px){.feature-grid{grid-template-columns:repeat(2,1fr)}}
+  .card{background:var(--card);border:1px solid #e8eaf1;border-radius:var(--radius);padding:30px 30px 34px;transition:transform .2s,box-shadow .2s}
+  .card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+  .card .ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+  .card .ico svg{width:24px;height:24px}
+  .card h3{font-size:19px;margin:0 0 10px;color:var(--ink);font-weight:700}
+  .card p{margin:0;color:var(--text-soft);font-size:15px}
+  .ico-amber{background:#fdf1de}.ico-amber svg{fill:var(--amber-deep)}
+  .ico-mint{background:#e1f7f1}.ico-mint svg{fill:#1bb893}
+  .ico-sky{background:#e9f1ff}.ico-sky svg{fill:#3f86f0}
+  .ico-rose{background:#ffe9ef}.ico-rose svg{fill:#e9557c}
+  .ico-indigo{background:#e9e8ff}.ico-indigo svg{fill:#5b54e0}
+  .ico-teal{background:#e2f6f3}.ico-teal svg{fill:#0f9d8e}
+  .showcase{background:var(--ink);color:#eef1f8;border-radius:24px;padding:44px 40px;display:grid;gap:30px;align-items:center}
+  @media(min-width:900px){.showcase{grid-template-columns:1.1fr .9fr}}
+  .showcase h3{font-size:26px;margin:0 0 14px;font-weight:800;letter-spacing:-.3px}
+  .showcase p{color:#c2cade;margin:0 0 22px;font-size:15.5px}
+  .showcase .chip{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:8px 15px;font-size:12.5px;margin-right:8px;margin-bottom:8px;color:#dfe5f0}
+  .showcase .chip b{color:var(--amber);font-weight:700}
+  .mini-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .mini-tab{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:18px 14px;text-align:center}
+  .mini-tab .t-ico{width:34px;height:34px;border-radius:9px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center}
+  .mini-tab .t-ico svg{width:18px;height:18px}
+  .mini-tab span{font-size:12.5px;color:#c2cade}
+  .steps{display:grid;grid-template-columns:1fr;gap:16px;counter-reset:step}
+  @media(min-width:820px){.steps{grid-template-columns:repeat(3,1fr)}}
+  .step{position:relative;background:var(--card);border:1px solid #e8eaf1;border-radius:var(--radius);padding:26px 24px 28px}
+  .step-num{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--amber);font-weight:800;font-size:15px;margin-bottom:14px}
+  .step h3{font-size:16.5px;margin:0 0 8px;color:var(--ink)}
+  .step p{margin:0;color:var(--text-soft);font-size:14px}
+  .step code{background:#eef0f6;color:#3a4660;border-radius:6px;padding:2px 7px;font-size:12.5px;font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}
+  .privacy{background:var(--ink-soft);color:#dfe5f0;border-radius:24px;padding:42px 40px}
+  .privacy h2{color:#fff}
+  .privacy .sec-sub{color:#b9c2d8}
+  .privacy-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:30px}
+  @media(min-width:820px){.privacy-grid{grid-template-columns:repeat(3,1fr)}}
+  .pv{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px}
+  .pv h4{margin:0 0 6px;color:#fff;font-size:15px;display:flex;align-items:center;gap:8px}
+  .pv h4 svg{width:18px;height:18px;fill:var(--mint)}
+  .pv p{margin:0;color:#b9c2d8;font-size:14px}
+  footer{padding:46px 0 54px;color:#8a93a6;font-size:13.5px}
+  .foot-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;align-items:center;border-top:1px solid #e3e6ef;padding-top:30px}
+  .foot-brand{display:flex;align-items:center;gap:9px;font-weight:700;color:var(--ink)}
+  .foot-brand svg{width:22px;height:22px}
+  .foot-links a{color:var(--text-soft);text-decoration:none;margin-left:20px}
+  .foot-links a:hover{color:var(--ink)}
+  .foot-note{margin-top:16px;line-height:1.8}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1!important;transform:none!important}}
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Compass New Tab">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#101523"/><path d="M32 8 L38 26 L56 32 L38 38 L32 56 L26 38 L8 32 L26 26 Z" fill="#f5a623"/><circle cx="32" cy="32" r="6" fill="#f5a623"/></svg>
+      Compass New Tab
+    </a>
+    <nav class="nav-links">
+      <a href="#features" class="hide-sm">功能</a>
+      <a href="#install">安装</a>
+      <a href="#privacy" class="hide-sm">隐私</a>
+      <a href="https://github.com/compassscout/compass-new-tab" target="_blank" rel="noopener">源码</a>
+      <a class="nav-cta" href="https://aka.doubaocdn.com/s/AHbhETf9Nb">下载即用</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <svg class="stars" preserveAspectRatio="xMidYMid slice" viewBox="0 0 1200 600" aria-hidden="true">
+      <g fill="rgba(255,255,255,.5)"><circle cx="120" cy="90" r="1.6"/><circle cx="320" cy="150" r="1"/><circle cx="560" cy="70" r="1.3"/><circle cx="820" cy="120" r="1"/><circle cx="1030" cy="80" r="1.6"/><circle cx="200" cy="260" r="1"/><circle cx="980" cy="260" r="1.2"/><circle cx="700" cy="210" r="1"/><circle cx="80" cy="180" r="1.2"/><circle cx="1120" cy="180" r="1"/></g>
+    </svg>
+    <div class="wrap">
+      <div class="hero-eyebrow"><span class="dot"></span>Chrome 扩展 · Manifest V3 · 开源免费</div>
+      <h1>重新定义你的<br><span class="hl">新标签页</span></h1>
+      <p class="hero-sub">Compass New Tab 为你带来精致的本地壁纸、四引擎五类别搜索、可收纳的图标文件夹与完整个性化设置，让每次打开新标签页都高效且赏心悦目。数据全部本地，绝不联网。</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://aka.doubaocdn.com/s/AHbhETf9Nb">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+          下载即用</a>
+        <a class="btn btn-ghost" href="#install">安装步骤</a>
+      </div>
+
+      <div class="mock-wrap reveal">
+        <div class="mock-glare"></div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4v12M4.9 7.2c1.4 1.2 4.2 2 7.1 2s5.7-.8 7.1-2M4.9 16.8c1.4-1.2 4.2-2 7.1-2s5.7.8 7.1 2"/></svg>Compass New Tab</div>
+          </div>
+          <div class="ntab">
+            <div class="ntab-body">
+              <div class="ntab-search"><svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14l4.8 4.8 1.4-1.4-4.8-4.8A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>搜索网站，或输入网址</div>
+              <div class="ntab-grid">
+                <div class="ntab-icon"><b style="background:#4c8bf5">B</b><span>百度</span></div>
+                <div class="ntab-icon"><b style="background:#fb7299">B</b><span>哔哩</span></div>
+                <div class="ntab-icon"><b style="background:#ff6b6b">淘</b><span>淘宝</span></div>
+                <div class="ntab-icon"><b style="background:#e67e22">京</b><span>京东</span></div>
+                <div class="ntab-icon"><b style="background:#f5a623">微</b><span>微博</span></div>
+                <div class="ntab-icon"><b style="background:#3366ff">知</b><span>知乎</span></div>
+                <div class="ntab-icon"><b style="background:#2ed6b1">文</b><span>文档</span></div>
+                <div class="ntab-icon"><b style="background:#7a5ae0">文</b><span>文件夹</span></div>
+                <div class="ntab-icon"><b style="background:#e9557c">待</b><span>待办</span></div>
+                <div class="ntab-icon"><b style="background:#1bb893">图</b><span>图库</span></div>
+                <div class="ntab-icon"><b style="background:#3f86f0">历</b><span>历史</span></div>
+                <div class="ntab-icon"><b style="background:#5b54e0">设</b><span>设置</span></div>
+              </div>
+            </div>
+            <div class="ntab-dots"><i class="on"></i><i></i><i></i><i></i></div>
+            <div class="windmill"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 5.8 5.2-3-2.2 5.2 5.4 1.2-4.6 3.4 2.8 4.8-5.4-1.8-1.6 5.4-2.6-4.9-5.1 3.6 1.4-5.6L1 12l6-1.6L5 4.8l5.6 2.4z"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">FEATURES</div>
+        <h2>让新标签页真正属于你</h2>
+        <p class="sec-sub">对标 Infinity 的完整体验，从零独立实现，无框架、无构建、无网络请求。</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="card reveal">
+          <div class="ico ico-amber"><svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm3 3v2h6V8H7zm0 5v2h10v-2H7z"/></svg></div>
+          <h3>轻松管理常用网站</h3>
+          <p>16 个分类的本地预设站点库、自定义添加当前页面；图标支持纯色、预设与本地图片上传，颜色、大小、圆角、布局 2×4 到 3×3 自由定制。</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="ico ico-mint"><svg viewBox="0 0 24 24"><path d="M4 5h7a1 1 0 011 1v5a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm9 0h7a1 1 0 011 1v5a1 1 0 01-1 1h-7a1 1 0 01-1-1V6a1 1 0 011-1zM4 14h7a1 1 0 011 1v5a1 1 0 01-1 1H4a1 1 0 01-1-1v-5a1 1 0 011-1zm9 0h7a1 1 0 011 1v5a1 1 0 01-1 1h-7a1 1 0 01-1-1v-5a1 1 0 011-1z"/></svg></div>
+          <h3>图标文件夹</h3>
+          <p>把站点分组收纳进文件夹，一键打开全部；浮窗网格、编辑模式红叉移出、右侧滑出编辑面板、拖拽排序，站点可同时归属多个文件夹。</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="ico ico-sky"><svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14l4.8 4.8 1.4-1.4-4.8-4.8A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg></div>
+          <h3>四引擎五类别搜索</h3>
+          <p>百度 / 谷歌 / 必应 / Yahoo × 网页 / 图片 / 资讯 / 视频 / 地图，回车即在新标签页打开结果。搜索框大小、圆角、类别、按钮均可自定义。</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="ico ico-rose"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.6 4.9-.8-3.4 3.7 2 4.7L12 13l-3.3 2.2 2-4.7-3.4-3.7 4.9.8zM5 20h14a1 1 0 010 2H5a1 1 0 010-2z"/></svg></div>
+          <h3>本地壁纸与风车</h3>
+          <p>内置本地壁纸库与风车随机按钮，收藏池优先、约 300ms 淡变过渡，支持 1 小时 / 12 小时 / 24 小时 / 每次开新标签页四档自动轮换，离线可用。</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="ico ico-indigo"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5h2v2h-2V7zm-3 0h2v7h1.5v2h-4.5v-2h2V9H10V7z"/></svg></div>
+          <h3>多分页网格</h3>
+          <p>底部圆点切换分页，每页拥有独立的网格与排序；分页可自由增删，站点单份原件、分页与文件夹仅作引用视图。</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="ico ico-teal"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 100 16 8 8 0 000-16zM5 12a7 7 0 0111.5-5.5L6.5 16.5A6.96 6.96 0 015 12zm2.5 5.5L18.5 8.5A7 7 0 017.5 17.5z"/><circle cx="17.5" cy="6.5" r="2.5"/><path d="M3 3h2l-1 4-2-1zM18 4l1 4 3-1v2l-4 1h-2v-2z"/></svg></div>
+          <h3>我的 · 备份与待办</h3>
+          <p>头像昵称、`.infinity` 一键导出导入与数据修复；右下角待办卡片，输入实时自动保存到 IndexedDB，换机前导出备份即可无缝迁移。</p>
+        </article>
+      </div>
+
+      <div class="showcase reveal" style="margin-top:28px">
+        <div>
+          <h3>完整设置面板，标准与极简双模式</h3>
+          <p>壁纸遮罩与模糊、打开方式、通知、视图缩放、布局、图标、搜索框、字体、动画，全部分组真实生效；「还原设置」只重置外观，绝不触碰你的站点与数据。</p>
+          <span class="chip">侧边栏四 Tab：<b>主页</b> / <b>添加</b> / <b>我的</b> / <b>设置</b></span>
+          <span class="chip">标准 / <b>极简</b> 一键切换</span>
+          <span class="chip">仅申请 <b>storage</b> + <b>activeTab</b> 权限</span>
+        </div>
+        <div class="mini-tabs" aria-hidden="true">
+          <div class="mini-tab"><div class="t-ico ico-amber"><svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm3 3v2h6V8H7zm0 5v2h10v-2H7z"/></svg></div><span>主页</span></div>
+          <div class="mini-tab"><div class="t-ico ico-mint"><svg viewBox="0 0 24 24"><path d="M4 5h7a1 1 0 011 1v5a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm9 0h7a1 1 0 011 1v5a1 1 0 01-1 1h-7a1 1 0 01-1-1V6a1 1 0 011-1zM4 14h7a1 1 0 011 1v5a1 1 0 01-1 1H4a1 1 0 01-1-1v-5a1 1 0 011-1zm9 0h7a1 1 0 011 1v5a1 1 0 01-1 1h-7a1 1 0 01-1-1v-5a1 1 0 011-1z"/></svg></div><span>添加</span></div>
+          <div class="mini-tab"><div class="t-ico ico-teal"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M12 2a6 6 0 00-3.6 10.9c.8.4 1.2 1.2 1.1 2V16h5v-1.1c0-.8.3-1.6 1.1-2A6 6 0 0012 2z"/></svg></div><span>我的</span></div>
+          <div class="mini-tab"><div class="t-ico ico-sky"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zM2 12h3M19 12h3M12 2v3M12 19v3M5 5l2.1 2.1M16.9 16.9L19 19M19 5l-2.1 2.1M7.1 16.9L5 19"/></svg></div><span>设置</span></div>
+          <div class="mini-tab"><div class="t-ico ico-rose"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.6 4.9-.8-3.4 3.7 2 4.7L12 13l-3.3 2.2 2-4.7-3.4-3.7 4.9.8zM5 20h14a1 1 0 010 2H5a1 1 0 010-2z"/></svg></div><span>壁纸</span></div>
+          <div class="mini-tab"><div class="t-ico ico-indigo"><svg viewBox="0 0 24 24"><path d="M6 2h12v6a6 6 0 01-12 0V2zm0 8a6 6 0 006 6h.2l-3 4h5l1.5-2.2A6 6 0 0018 12v-2H6z"/></svg></div><span>搜索</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install" style="background:#eef0f6">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">GET STARTED</div>
+        <h2>三步装好，马上使用</h2>
+        <p class="sec-sub">Chrome / Edge 等 Chromium 浏览器均可，30 秒即可完成。</p>
+      </div>
+      <div class="steps">
+        <div class="step reveal">
+          <span class="step-num">1</span>
+          <h3>下载并解压</h3>
+          <p>点击右上角 <strong>下载即用</strong> 获取 <code>compass-new-tab-extension-v1.0.0.zip</code>，解压到任意目录。</p>
+        </div>
+        <div class="step reveal">
+          <span class="step-num">2</span>
+          <h3>打开开发者模式</h3>
+          <p>地址栏输入 <code>chrome://extensions</code>，打开右上角「开发者模式」开关。</p>
+        </div>
+        <div class="step reveal">
+          <span class="step-num">3</span>
+          <h3>加载已解压的扩展</h3>
+          <p>点击「加载已解压的扩展程序」，选择解压目录（能直接看到 <code>manifest.json</code> 的那一级）。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="wrap">
+      <div class="privacy reveal">
+        <h2>隐私与安全，从设计上保证</h2>
+        <p class="sec-sub">Compass New Tab 没有服务器、没有账号、没有追踪。你的数据只属于你的浏览器。</p>
+        <div class="privacy-grid">
+          <div class="pv">
+            <h4><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5-3.5 9.6-9 12-5.5-2.4-9-7-9-12V5l9-4zm-2 15l7-7-1.4-1.4L10 13.2l-3-3L5.6 11.6 10 16z"/></svg>零网络请求</h4>
+            <p>站点、文件夹、分页、壁纸、待办全部保存在本地 IndexedDB，外观配置在 localStorage，离线可用。</p>
+          </div>
+          <div class="pv">
+            <h4><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5-3.5 9.6-9 12-5.5-2.4-9-7-9-12V5l9-4zm-2 15l7-7-1.4-1.4L10 13.2l-3-3L5.6 11.6 10 16z"/></svg>最小权限</h4>
+            <p>仅申请 storage 与 activeTab，不请求书签、历史、通知等任何敏感权限。</p>
+          </div>
+          <div class="pv">
+            <h4><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5-3.5 9.6-9 12-5.5-2.4-9-7-9-12V5l9-4zm-2 15l7-7-1.4-1.4L10 13.2l-3-3L5.6 11.6 10 16z"/></svg>可迁移</h4>
+            <p>通过「我的 → 导出备份数据」生成 `.infinity` 文件，换浏览器、重装系统都能一键恢复。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#101523"/><path d="M32 8 L38 26 L56 32 L38 38 L32 56 L26 38 L8 32 L26 26 Z" fill="#f5a623"/><circle cx="32" cy="32" r="6" fill="#f5a623"/></svg>
+        Compass New Tab
+      </div>
+      <div class="foot-links">
+        <a href="https://github.com/compassscout/compass-new-tab" target="_blank" rel="noopener">GitHub 仓库</a>
+        <a href="https://aka.doubaocdn.com/s/AHbhETf9Nb" download>下载 zip</a>
+        <a href="#top">返回顶部</a>
+      </div>
+    </div>
+    <p class="foot-note">Compass New Tab 为个人独立开发的开源项目，界面体验对标 <strong>Infinity 新标签页</strong>，但全部代码独立编写，未使用其任何源码、素材或品牌标识。数据全本地，无任何网络请求。MIT License。</p>
+  </div>
+</footer>
+
+<script>
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+    });
+  }, {threshold:0.12, rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+</script>
+</body>
+</html>
