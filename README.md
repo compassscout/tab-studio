@@ -8,7 +8,7 @@
 
 | 用途 | 链接 |
 |---|---|
-| **下载安装包（推荐）** | **[tab-studio-v2.1.0.zip](https://github.com/compassscout/tab-studio/releases/download/v2.1.0/tab-studio-v2.1.0.zip)**（6.0 MB） |
+| **下载安装包（最新版）** | **[tab-studio-v2.1.0.zip](https://compassscout.github.io/tab-studio/assets/tab-studio-v2.1.0.zip)**（17.7 MB，含分页圆点循环/网页版等最新改动） |
 | 在线主页 / 截图 | https://compassscout.github.io/tab-studio/ |
 | 所有发布版本 | https://github.com/compassscout/tab-studio/releases |
 | 当前版本发布页 | https://github.com/compassscout/tab-studio/releases/tag/v2.1.0 |
