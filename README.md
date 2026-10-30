@@ -42,7 +42,8 @@
 
 工程内置了非扩展环境降级（`openUrl` / favicon / 添加当前页等自动走网页通道），因此**不装扩展也能用**：
 
-- 浏览器直接打开仓库里的 `newtab.html`（或本地起 HTTP 服务访问）即可当网页版新标签页使用：搜索、图标、分页、壁纸、小组件齐全。
+- **在线网页版**（GitHub Pages 部署，浏览器直接打开即用）：https://compassscout.github.io/tab-studio/newtab.html
+- 本地也可直接打开仓库里的 `newtab.html`（或本地起 HTTP 服务访问）当网页版使用：搜索、图标、分页、壁纸、小组件齐全。
 - 网页版数据与扩展各自独立（不同浏览器存储），默认是空、由你自行添加。
 - **宣传 / 落地页**（GitHub Pages 部署）：https://compassscout.github.io/tab-studio/
 
