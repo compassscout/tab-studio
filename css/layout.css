@@ -2,6 +2,7 @@
 
 #app { position: fixed; inset: 0; zoom: var(--sidebar-scale); }
 
+/* ---------- 左侧固定侧边栏 ---------- */
 #sidebar {
   position: fixed; left: 0; top: 0; bottom: 0;
   width: var(--sidebar-width);
@@ -9,7 +10,22 @@
   box-shadow: var(--shadow-card);
   display: flex; flex-direction: column; align-items: center;
   padding-top: 24px; gap: 10px; z-index: 800;
+  overflow: hidden;
+  transition: width var(--dur-normal) var(--ease-standard);
 }
+/* 折叠按钮 */
+#sidebar-collapse {
+  width: 52px; height: 26px; border: none; background: transparent;
+  color: var(--c-sidebar-text); font-size: 16px; cursor: pointer; line-height: 1;
+}
+body.sb-collapsed #sidebar-collapse { transform: rotate(180deg); }
+/* 默认展开：图标+文字；收起：只图标（对标原版可折叠） */
+.side-tab { flex-direction: row; width: calc(100% - 8px); justify-content: flex-start; padding: 0 12px; gap: 12px; }
+.side-tab > span:last-child { display: inline-block; white-space: nowrap; }
+body.sb-collapsed #sidebar { width: var(--sidebar-width); }
+body.sb-collapsed .side-tab { flex-direction: column; width: 52px; justify-content: center; padding: 0; gap: 3px; }
+body.sb-collapsed .side-tab > span:last-child { display: none; }
+body.sb-collapsed #main-view { left: var(--sidebar-width); }
 .side-tab {
   width: 52px; height: 52px; border-radius: var(--radius-md);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -20,12 +36,15 @@
 .side-tab.active { background: var(--c-accent-weak); color: var(--c-accent); }
 .side-tab:hover { background: var(--c-panel-bg-soft); }
 
+/* ---------- 主视图容器 ---------- */
 #main-view {
   position: absolute; left: var(--sidebar-width); right: 0; top: 0; bottom: 0;
+  transition: left var(--dur-normal) var(--ease-standard);
 }
 .panel { position: absolute; inset: 0; display: none; overflow-y: auto; }
 .panel.active { display: block; }
 
+/* ---------- 主页视图 ---------- */
 #home-view { padding: 0 40px 56px; }
 #home-search-wrap {
   display: flex; flex-direction: column; align-items: center;
@@ -64,6 +83,7 @@
   width: 56px; height: 100%; background: var(--c-accent); color: var(--c-on-accent); font-size: 14px;
 }
 
+/* ---------- 网格卡片区 ---------- */
 #grid-container {
   display: grid;
   grid-template-columns: repeat(var(--grid-cols), var(--icon-box-width));
@@ -79,6 +99,7 @@
   font-size: 13px; padding: 40px 0;
 }
 
+/* ---------- 分页圆点 ---------- */
 #pagination-bar {
   position: absolute; left: var(--sidebar-width); right: 0; bottom: 14px;
   display: flex; justify-content: center; align-items: center; gap: var(--page-dot-gap);
@@ -106,6 +127,7 @@
 }
 #page-add-btn:hover { background: rgba(255,255,255,0.6); }
 
+/* 翻页按钮（默认隐藏，视图设置可开启） */
 .page-arrow {
   position: absolute; top: 46%; width: 36px; height: 64px;
   background: rgba(255,255,255,0.18); color: var(--c-on-accent); font-size: 28px;
@@ -115,6 +137,7 @@
 #page-prev { left: 12px; }
 #page-next { right: 12px; }
 
+/* ---------- 右下角悬浮按钮 ---------- */
 #floating-corner {
   position: fixed; right: 20px; bottom: 20px; z-index: 750;
   display: flex; flex-direction: column; align-items: center; gap: 12px;

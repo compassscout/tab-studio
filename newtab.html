@@ -16,14 +16,25 @@
   <div id="degraded-note">当前为 file:// 降级预览（静态骨架）；完整功能请在 chrome://extensions 加载本扩展目录。</div>
 
   <div id="app">
+    <!-- 左侧固定侧边栏 -->
     <aside id="sidebar">
-      <button class="side-tab active" id="tab-home" data-panel="panel-home"><span class="side-icon">🏠</span><span>主页</span></button>
-      <button class="side-tab" id="tab-add" data-panel="panel-add"><span class="side-icon">➕</span><span>添加</span></button>
-      <button class="side-tab" id="tab-me" data-panel="panel-me"><span class="side-icon">👤</span><span>我的</span></button>
-      <button class="side-tab" id="tab-settings" data-panel="panel-settings"><span class="side-icon">⚙️</span><span>设置</span></button>
+      <button id="sidebar-collapse" class="side-collapse" title="收起 / 展开侧边栏">‹</button>
+      <button class="side-tab active" id="tab-home" data-panel="panel-home">
+        <span class="side-icon">🏠</span><span>主页</span>
+      </button>
+      <button class="side-tab" id="tab-add" data-panel="panel-add">
+        <span class="side-icon">➕</span><span>添加</span>
+      </button>
+      <button class="side-tab" id="tab-me" data-panel="panel-me">
+        <span class="side-icon">👤</span><span>我的</span>
+      </button>
+      <button class="side-tab" id="tab-settings" data-panel="panel-settings">
+        <span class="side-icon">⚙️</span><span>设置</span>
+      </button>
     </aside>
 
     <main id="main-view">
+      <!-- 主页面板 -->
       <section id="panel-home" class="panel active">
         <div id="home-search-wrap">
           <div id="home-search-inner">
@@ -52,6 +63,7 @@
         <button id="page-next" class="page-arrow" title="下一页">›</button>
       </section>
 
+      <!-- 添加面板 -->
       <section id="panel-add" class="panel">
         <div id="add-search-bar">
           <input id="add-search" type="text" placeholder="搜索网站" autocomplete="off">
@@ -64,6 +76,7 @@
         </div>
       </section>
 
+      <!-- 我的面板 -->
       <section id="panel-me" class="panel">
         <div class="me-card">
           <div class="me-row" style="justify-content:flex-start;gap:16px;">
@@ -71,13 +84,18 @@
             <input id="me-name" type="text" placeholder="昵称" maxlength="20">
           </div>
         </div>
+
         <div class="me-card">
           <div class="me-title">同步（一期仅本地备份，云同步为二期规划）</div>
-          <div class="me-row"><span>与其他设备保持同步</span><label class="switch"><input type="checkbox" id="sync-toggle"><span class="slider"></span></label></div>
+          <div class="me-row">
+            <span>与其他设备保持同步</span>
+            <label class="switch"><input type="checkbox" id="sync-toggle"><span class="slider"></span></label>
+          </div>
           <div class="me-row"><span class="row-note">上次同步时间：<span id="last-sync-time">暂无记录</span></span></div>
           <div class="me-row"><span>管理历史备份节点</span><button class="btn btn-ghost" id="manage-backups-btn">查看</button></div>
           <div class="me-row"><span>立即备份</span><button class="btn btn-primary" id="backup-now-btn">立即备份</button></div>
         </div>
+
         <div class="me-card">
           <div class="me-title">备份与恢复</div>
           <div class="me-row"><span>导出备份数据</span><button class="btn btn-ghost" id="export-btn">导出 .infinity</button></div>
@@ -85,6 +103,7 @@
           <div class="me-row"><span>修复数据</span><button class="btn btn-ghost" id="repair-btn">修复并查看摘要</button></div>
           <input type="file" id="import-file" accept=".infinity" style="display:none;">
         </div>
+
         <div class="me-card">
           <div class="me-title">用户评价</div>
           <div class="me-row">
@@ -97,12 +116,14 @@
           </div>
           <div class="me-row"><span>反馈问题与建议</span><button class="btn btn-ghost" id="feedback-btn">提交反馈（一期占位）</button></div>
         </div>
+
         <div class="me-card">
           <div class="me-title">打赏支持</div>
           <div class="donate-placeholder">打赏二维码区（一期占位，二期接入）</div>
         </div>
       </section>
 
+      <!-- 设置面板 -->
       <section id="panel-settings" class="panel">
         <div id="settings-header">
           <span id="settings-title">设置</span>
@@ -111,6 +132,7 @@
             <button id="mode-minimal">极简模式</button>
           </div>
         </div>
+
         <div class="settings-group" id="group-wallpaper">
           <h3>壁纸</h3>
           <div class="setting-row"><span class="row-label">当前壁纸预览</span><div class="row-control"><div id="wp-thumb"></div><button class="btn btn-ghost" id="settings-wp-download">下载</button></div></div>
@@ -122,6 +144,7 @@
             <option value="24h">24 小时</option><option value="session">每次打开新标签页</option>
           </select></div></div>
         </div>
+
         <div class="settings-group" id="group-opentarget">
           <h3>目标打开方式</h3>
           <div class="setting-row"><span class="row-label">在新标签页打开网站</span><label class="switch"><input type="checkbox" id="cfg-open-site"><span class="slider"></span></label></div>
@@ -129,6 +152,7 @@
           <div class="setting-row"><span class="row-label">书签链接</span><label class="switch"><input type="checkbox" id="cfg-open-bookmark"><span class="slider"></span></label></div>
           <div class="setting-row"><span class="row-label">历史记录</span><label class="switch"><input type="checkbox" id="cfg-open-history"><span class="slider"></span></label></div>
         </div>
+
         <div class="settings-group" id="group-notify">
           <h3>通知（一期仅界面开关，未接入后端）</h3>
           <div class="setting-row"><span class="row-label">Gmail 邮件通知</span><label class="switch"><input type="checkbox" id="cfg-gmail"><span class="slider"></span></label></div>
@@ -136,6 +160,7 @@
           <div class="setting-row"><span class="row-label">图标上显示未读 Gmail 数量</span><label class="switch"><input type="checkbox" id="cfg-gmail-badge"><span class="slider"></span></label></div>
           <div class="setting-row"><span class="row-label">图标上显示待办数量</span><label class="switch"><input type="checkbox" id="cfg-todo-badge"><span class="slider"></span></label></div>
         </div>
+
         <div class="settings-group" id="group-view">
           <h3>视图</h3>
           <div class="setting-row"><span class="row-label">屏幕缩放</span><div class="row-control"><input type="range" id="cfg-screen-scale" min="0.8" max="1.2" step="0.05"><span class="range-value" id="cfg-screen-scale-v"></span></div></div>
@@ -146,10 +171,12 @@
           <div class="setting-row"><span class="row-label">翻页按钮</span><label class="switch"><input type="checkbox" id="cfg-pagebtns"><span class="slider"></span></label></div>
           <div class="setting-row"><span class="row-label">隐藏顶部 AI 图标（占位）</span><label class="switch"><input type="checkbox" id="cfg-hideai"><span class="slider"></span></label></div>
         </div>
+
         <div class="settings-group" id="group-layout">
           <h3>布局</h3>
           <div class="layout-options" id="layout-options"></div>
         </div>
+
         <div class="settings-group" id="group-icon">
           <h3>图标</h3>
           <div class="setting-row"><span class="row-label">隐藏图标名称</span><label class="switch"><input type="checkbox" id="cfg-hide-name"><span class="slider"></span></label></div>
@@ -159,6 +186,7 @@
           <div class="setting-row"><span class="row-label">图标不透明度</span><div class="row-control"><input type="range" id="cfg-icon-opacity" min="0.2" max="1" step="0.05"><span class="range-value" id="cfg-icon-opacity-v"></span></div></div>
           <div class="setting-row"><span class="row-label">图标大小</span><div class="row-control"><input type="range" id="cfg-icon-size" min="40" max="96"><span class="range-value" id="cfg-icon-size-v"></span></div></div>
         </div>
+
         <div class="settings-group" id="group-searchbox">
           <h3>搜索框</h3>
           <div class="setting-row"><span class="row-label">隐藏搜索框</span><label class="switch"><input type="checkbox" id="cfg-hide-search"><span class="slider"></span></label></div>
@@ -170,6 +198,7 @@
           <div class="setting-row"><span class="row-label">搜索框圆角</span><div class="row-control"><input type="range" id="cfg-search-radius" min="0" max="24"><span class="range-value" id="cfg-search-radius-v"></span></div></div>
           <div class="setting-row"><span class="row-label">搜索框不透明度</span><div class="row-control"><input type="range" id="cfg-search-opacity" min="0.3" max="1" step="0.05"><span class="range-value" id="cfg-search-opacity-v"></span></div></div>
         </div>
+
         <div class="settings-group" id="group-font">
           <h3>字体</h3>
           <div class="setting-row"><span class="row-label">字体阴影</span><label class="switch"><input type="checkbox" id="cfg-font-shadow"><span class="slider"></span></label></div>
@@ -186,6 +215,7 @@
             <input type="color" id="custom-font-color" title="自定义颜色">
           </div></div>
         </div>
+
         <div class="settings-group" id="group-anim">
           <h3>动画</h3>
           <div class="anim-options" id="anim-options">
@@ -194,6 +224,7 @@
             <button class="btn btn-ghost" data-anim="fade">淡入</button>
           </div>
         </div>
+
         <div class="settings-group" id="group-reset">
           <h3>重置设置</h3>
           <div class="me-row"><span>仅恢复样式配置默认值，不删除站点 / 文件夹 / 分页 / 壁纸 / 待办数据</span><button class="btn btn-danger" id="reset-btn">还原设置</button></div>
@@ -201,17 +232,20 @@
       </section>
     </main>
 
+    <!-- 分页圆点 -->
     <div id="pagination-bar">
       <div id="dots" style="display:flex;align-items:center;gap:var(--page-dot-gap);"></div>
       <button id="page-add-btn" title="新建分页">+</button>
     </div>
 
+    <!-- 右下角悬浮 -->
     <div id="floating-corner">
       <button id="todo-fab" title="待办事项">✏️</button>
       <button id="windmill-btn" title="随机换壁纸">🌀</button>
     </div>
   </div>
 
+  <!-- 文件夹浮窗 -->
   <div id="folder-overlay" class="overlay modal-hidden"></div>
   <section id="folder-modal" class="modal modal-hidden">
     <div id="folder-header">
@@ -238,6 +272,7 @@
     </div>
   </aside>
 
+  <!-- 通用站点编辑弹窗 -->
   <section id="site-editor-modal" class="modal modal-hidden">
     <h3 id="se-title">编辑站点</h3>
     <div class="form-row"><label>网址</label><input type="text" id="se-url" placeholder="https://example.com"></div>
@@ -260,8 +295,10 @@
     </div>
   </section>
 
+  <!-- 右键菜单 -->
   <div id="context-menu" class="modal-hidden"></div>
 
+  <!-- 确认弹窗 -->
   <section id="confirm-modal" class="modal modal-hidden">
     <div id="confirm-text">确认执行？</div>
     <div class="modal-footer">
@@ -270,12 +307,14 @@
     </div>
   </section>
 
+  <!-- 待办弹窗 -->
   <section id="todo-modal" class="modal modal-hidden">
     <h4>待办事项（输入自动保存）</h4>
     <textarea id="todo-text" placeholder="在这里记录待办，输入后自动保存到本地。"></textarea>
     <div id="todo-saved-hint"></div>
   </section>
 
+  <!-- 壁纸预览弹窗 -->
   <section id="wp-preview-modal" class="modal modal-hidden">
     <div id="wp-preview-img"></div>
     <div id="wp-preview-actions">
@@ -289,6 +328,7 @@
 
   <div id="toast"></div>
 
+  <!-- 主模块（MV3 扩展环境加载；file:// 下模块受 CORS 限制，由 degrade.js 提示静态降级预览） -->
   <script type="module" src="js/main.js"></script>
   <script src="js/degrade.js"></script>
 </body>
