@@ -1,123 +1,187 @@
-/* contextmenu.js — 自定义右键菜单（站点卡 / 文件夹卡）+ 通用确认弹窗 + 跨分页移动 */
-import { getState, getSite, moveSiteToPage, deleteSite } from './store.js';
-import { db } from './db.js';
-import { openSiteEditor, renameFolder, openAllFolderSites, removeFolder, createFolderFromSite } from './folder.js';
+/* contextmenu.js — 自定义右键菜单：站点 / 文件夹 / 分页 */
+import { getState, getSite, getFolder, moveItemToPage, deleteSite, addFolder, detachItemFromPages, deletePage, renamePage, addPage, setCurrentPage } from './store.js';
+import { openSiteEditor, renameFolder, openAllFolder, removeFolder, openFolder } from './folder.js';
 import { renderAll } from './render.js';
-import { toast, escapeHtml } from './utils.js';
+import { confirmAction, askText } from './dialog.js';
+import { openUrl, toast } from './utils.js';
 
-const menu = document.getElementById('context-menu');
+const menu = document.getElementById('ctx-menu');
 
-function placeMenu(x, y) {
-  menu.classList.remove('modal-hidden');
-  menu.style.left = '0px'; menu.style.top = '0px';
+function hide() {
+  menu.classList.add('hidden');
+  menu.innerHTML = '';
+}
+
+function place(x, y) {
+  menu.classList.remove('hidden');
+  menu.style.left = '0px';
+  menu.style.top = '0px';
   const rect = menu.getBoundingClientRect();
-  let left = Math.min(x, window.innerWidth - rect.width - 8);
-  let top = Math.min(y, window.innerHeight - rect.height - 8);
-  menu.style.left = Math.max(4, left) + 'px';
-  menu.style.top = Math.max(4, top) + 'px';
+  menu.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 10)) + 'px';
+  menu.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 10)) + 'px';
 }
 
-function hideMenu() { menu.classList.add('modal-hidden'); menu.innerHTML = ''; }
-
-function addItem(label, onClick, opts = {}) {
-  const div = document.createElement('div');
-  div.className = 'ctx-item' + (opts.sub ? ' ctx-sub' : '');
-  div.textContent = label;
-  if (opts.submenu) {
-    const sub = document.createElement('div');
-    sub.className = 'ctx-submenu';
-    opts.submenu(sub);
-    div.appendChild(sub);
-  } else {
-    div.addEventListener('click', () => { hideMenu(); onClick && onClick(); });
-  }
-  menu.appendChild(div);
-}
-function addSep() { const d = document.createElement('div'); d.className = 'ctx-sep'; menu.appendChild(d); }
-
-function pageSubmenu(container, handler) {
-  const pages = getState().pages;
-  pages.forEach((p) => {
-    const item = document.createElement('div');
-    item.className = 'ctx-item';
-    item.textContent = p.name;
-    item.addEventListener('click', (e) => { e.stopPropagation(); hideMenu(); handler(p); });
-    container.appendChild(item);
-  });
+function item(label, onClick, { danger = false, indent = false } = {}) {
+  const btn = document.createElement('button');
+  btn.textContent = label;
+  if (danger) btn.classList.add('danger');
+  if (indent) btn.style.paddingLeft = '24px';
+  btn.addEventListener('click', async () => { hide(); await onClick?.(); });
+  menu.appendChild(btn);
 }
 
-window.__openSiteMenu = function (e, siteId) {
+function sep() {
+  const s = document.createElement('div');
+  s.className = 'pop-sep';
+  menu.appendChild(s);
+}
+
+function title(text) {
+  const t = document.createElement('div');
+  t.className = 'pop-title';
+  t.textContent = text;
+  menu.appendChild(t);
+}
+
+async function newFolderWith(siteId) {
+  const name = await askText({ title: '新建文件夹', placeholder: '文件夹名称', value: '新文件夹', okText: '创建' });
+  if (!name) return;
+  await addFolder(name, [siteId]);
+  await detachItemFromPages(siteId);
+  renderAll();
+  toast('已新建文件夹并收纳该站点');
+}
+
+export function openSiteMenu(e, siteId, { folderId = null } = {}) {
   const site = getSite(siteId);
   if (!site) return;
   menu.innerHTML = '';
-  addItem('编辑', () => openSiteEditor(siteId));
-  addItem('复制网址', async () => {
+  item('打开', () => openUrl(site.url, { newTab: true }));
+  item('编辑', () => openSiteEditor(siteId));
+  item('复制网址', async () => {
     try { await navigator.clipboard.writeText(site.url); toast('已复制网址'); }
     catch (err) { toast('复制失败'); }
   });
-  addItem('移动至', null, { sub: true, submenu: (sub) => {
-    pageSubmenu(sub, async (page) => {
-      await moveSiteToPage(siteId, page.id);
-      await db.put('sites', Object.assign(site, { pageId: page.id }));
+  sep();
+  const pages = getState().pages.filter((p) => p.siteIds.includes(siteId));
+  const current = pages[0];
+  const others = getState().pages.filter((p) => p.id !== current?.id);
+  if (others.length) {
+    title('移动到分页');
+    others.forEach((page) => item(page.name, async () => {
+      await moveItemToPage(siteId, page.id);
       renderAll();
       toast(`已移动到「${page.name}」`);
-    });
-  }});
-  addItem('新建文件夹', () => createFolderFromSite(siteId));
-  addItem('添加到分页', null, { sub: true, submenu: (sub) => {
-    pageSubmenu(sub, async (page) => {
-      if (!page.siteIds.includes(siteId)) page.siteIds.push(siteId);
-      await db.put('pages', page);
+    }, { indent: true }));
+    sep();
+  }
+  item('新建文件夹收纳', () => newFolderWith(siteId));
+  item('固定到 Dock', () => window.app?.pinDock?.(siteId));
+  if (folderId) {
+    item('从文件夹移出', async () => {
+      const { removeSiteFromFolder } = await import('./store.js');
+      await removeSiteFromFolder(folderId, siteId);
       renderAll();
-      toast(`已添加到「${page.name}」（保留原分页）`);
+      toast('已移出文件夹');
     });
-  }});
-  addSep();
-  addItem('删除', async () => {
-    const ok = await window.__confirm(`确认删除「${site.name}」？该操作会从所有分页和文件夹中移除并删除站点本体。`);
+  }
+  sep();
+  item('删除', async () => {
+    const ok = await confirmAction(`删除「${site.name}」？会从所有分页和文件夹中移除。`, { okText: '删除' });
     if (!ok) return;
     await deleteSite(siteId);
     renderAll();
     toast('站点已删除');
-  }, );
-  placeMenu(e.clientX, e.clientY);
-};
+  }, { danger: true });
+  place(e.clientX, e.clientY);
+}
 
-window.__openFolderMenu = function (e, folderId) {
+export function openFolderMenu(e, folderId) {
+  const folder = getFolder(folderId);
+  if (!folder) return;
   menu.innerHTML = '';
-  addItem('编辑文件夹', () => renameFolder(folderId));
-  addItem('打开全部', () => openAllFolderSites(folderId));
-  addItem('重命名', () => renameFolder(folderId));
-  addSep();
-  addItem('删除文件夹', () => removeFolder(folderId));
-  placeMenu(e.clientX, e.clientY);
-};
+  item('打开', () => openFolder(folderId));
+  item('重命名', () => renameFolder(folderId));
+  item('打开全部', () => openAllFolder(folderId));
+  item('固定到 Dock', () => window.app?.pinDock?.(folderId));
+  sep();
+  item('删除文件夹', () => removeFolder(folderId), { danger: true });
+  place(e.clientX, e.clientY);
+}
+
+export function openPageMenu(e, pageId) {
+  const page = getState().pages.find((p) => p.id === pageId);
+  if (!page) return;
+  menu.innerHTML = '';
+  title(`分页：${page.name}`);
+  item('切换到这一页', () => { setCurrentPage(pageId); renderAll(); });
+  item('重命名', async () => {
+    const name = await askText({ title: '重命名分页', value: page.name, okText: '保存' });
+    if (!name) return;
+    await renamePage(pageId, name);
+    renderAll();
+  });
+  item('新建分页', async () => {
+    const p = await addPage();
+    setCurrentPage(p.id);
+    renderAll();
+    toast(`已新建「${p.name}」`);
+  });
+  sep();
+  item('删除分页', async () => {
+    if (getState().pages.length <= 1) { toast('至少保留一个分页'); return; }
+    const ok = await confirmAction('删除这个分页？页面里的站点会移动到第 1 页，不会丢失。', { okText: '删除' });
+    if (!ok) return;
+    try {
+      await deletePage(pageId);
+      renderAll();
+      toast('分页已删除，内容已移到第 1 页');
+    } catch (err) { toast(err.message || '删除失败'); }
+  }, { danger: true });
+  place(e.clientX, e.clientY);
+}
+
+export function openWidgetMenu(e, widgetId) {
+  const map = {
+    'widget-weather': '天气', 'widget-todo': '待办事项', 'widget-note': '笔记',
+    'widget-folder': '文件夹', 'widget-settings': '设置',
+  };
+  if (!map[widgetId]) return;
+  menu.innerHTML = '';
+  title(map[widgetId]);
+  item('打开', () => {
+    const action = {
+      'widget-weather': 'openWeather', 'widget-todo': 'openTodo', 'widget-note': 'openNote',
+      'widget-folder': 'openFolders', 'widget-settings': 'openSettings',
+    }[widgetId];
+    window.app?.[action]?.();
+  });
+  item('固定到 Dock', () => window.app?.pinDock?.(widgetId));
+  const others = getState().pages.filter((p) => p.id !== getCurrentPageId());
+  if (others.length) {
+    sep();
+    title('移动到分页');
+    others.forEach((page) => item(page.name, async () => {
+      const { moveItemToPage } = await import('./store.js');
+      await moveItemToPage(widgetId, page.id);
+      renderAll();
+      toast(`已移动到「${page.name}」`);
+    }, { indent: true }));
+  }
+  place(e.clientX, e.clientY);
+}
+
+function getCurrentPageId() {
+  const app = window.app;
+  return app?.pageId ? app.pageId() : null;
+}
 
 export function initContextMenu() {
-  document.addEventListener('click', () => hideMenu());
-  document.addEventListener('scroll', () => hideMenu(), true);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideMenu(); });
-  window.addEventListener('resize', hideMenu);
+  document.addEventListener('click', (e) => { if (!e.target.closest('#ctx-menu')) hide(); });
+  document.addEventListener('contextmenu', (e) => {
+    if (e.defaultPrevented) return;
+    if (!e.target.closest('#ctx-menu')) hide();
+  });
+  document.addEventListener('scroll', hide, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
 }
-
-let confirmResolver = null;
-export function initConfirm() {
-  const modal = document.getElementById('confirm-modal');
-  document.getElementById('confirm-ok').addEventListener('click', () => {
-    modal.classList.add('modal-hidden');
-    confirmResolver && confirmResolver(true); confirmResolver = null;
-  });
-  document.getElementById('confirm-cancel').addEventListener('click', () => {
-    modal.classList.add('modal-hidden');
-    confirmResolver && confirmResolver(false); confirmResolver = null;
-  });
-  document.getElementById('folder-overlay').addEventListener('click', () => {});
-}
-
-window.__confirm = function (text) {
-  return new Promise((resolve) => {
-    confirmResolver = resolve;
-    document.getElementById('confirm-text').textContent = text;
-    document.getElementById('confirm-modal').classList.remove('modal-hidden');
-  });
-};

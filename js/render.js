@@ -1,200 +1,349 @@
-/* render.js — 主页网格 / 站点卡 / 文件夹卡 / 分页圆点渲染 */
-import { getState, getCurrentPage, getSite, getFolder, setCurrentPageId, addPage, removePage, reorderPage, reorderPages, addFolder, addSiteToFolder } from './store.js';
-import { db } from './db.js';
-import { openUrl, escapeHtml, firstCharOf, toast } from './utils.js';
-import { PRESET_ICONS } from './presets.js';
-import { loadConfig } from './config.js';
+/* render.js — 首页网格：小组件 / 站点 / 文件夹 / 添加卡 + 分页圆点 */
+import {
+  getState, getCurrentPage, currentPageIndex, getSite, getFolder,
+  capacityOfPage, setCurrentPage, addPage, deletePage, reorderPages, pendingTodoCount,
+} from './store.js';
+import { loadConfig, loadMeta } from './config.js';
+import { chromeFaviconUrl, paintIcon } from './favicon.js';
+import { escapeHtml, firstChar, toast, openUrl, debounce } from './utils.js';
 
-export const PRESET_COLORS = ['#4c8bf5', '#ff6b6b', '#f5a623', '#34c759', '#9b59b6', '#16a085', '#e67e22', '#5b8def'];
+const WIDGETS = [
+  { key: 'weather', label: '天气', icon: 'i-weather', cls: 'widget-weather' },
+  { key: 'todo', label: '待办事项', icon: 'i-todo', cls: 'widget-todo' },
+  { key: 'note', label: '笔记', icon: 'i-note', cls: 'widget-note' },
+  { key: 'folder', label: '文件夹', icon: 'i-folder', cls: 'widget-folder' },
+  { key: 'settings', label: '设置', icon: 'i-gear', cls: 'widget-settings' },
+];
 
-/** 渲染单个图标（站点卡 / 文件夹缩略共用），返回 HTML 字符串（已转义） */
-export function iconInner(site, sizeClass = '') {
-  if (!site) return '';
-  if (site.iconType === 'upload' && site.iconValue) {
-    return `<div class="icon-content ${sizeClass}" style="background-image:url('${site.iconValue}');background-size:cover;"></div>`;
-  }
-  if (site.iconType === 'preset' && PRESET_ICONS[site.iconValue]) {
-    return `<div class="icon-content ${sizeClass}" style="background:${escapeHtml(site.color || '#4c8bf5')};">${PRESET_ICONS[site.iconValue]}</div>`;
-  }
-  return `<div class="icon-content ${sizeClass}" style="background:${escapeHtml(site.color || '#4c8bf5')};">${escapeHtml(firstCharOf(site.name))}</div>`;
-}
+function app() { return window.app || {}; }
 
-function siteCardEl(site, { anim = false } = {}) {
+function makeCell(kind, id, extraClass = '') {
   const el = document.createElement('div');
-  el.className = 'site-card' + (anim ? ' start-animate' : '');
-  el.dataset.type = 'site';
-  el.dataset.id = site.id;
-  el.innerHTML = `
-    ${iconInner(site)}
-    <div class="icon-name">${escapeHtml(site.name || '未命名')}</div>`;
-  el.addEventListener('click', () => onSiteClick(site));
-  el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); window.__openSiteMenu(e, site.id); });
-  el.draggable = true;
-  el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', site.id); e.dataTransfer.effectAllowed = 'move'; el.classList.add('dragging'); });
-  el.addEventListener('dragend', () => { el.classList.remove('dragging'); });
+  el.className = `cell ${kind}${extraClass ? ' ' + extraClass : ''}`;
+  el.dataset.kind = kind;
+  if (id) el.dataset.id = id;
+  el.tabIndex = 0;
+  el.setAttribute('role', 'button');
   return el;
 }
 
-function folderCardEl(folder, { anim = false } = {}) {
-  const el = document.createElement('div');
-  el.className = 'site-card folder-card' + (anim ? ' start-animate' : '');
-  el.dataset.type = 'folder';
-  el.dataset.id = folder.id;
-  const members = folder.iconIds.map(getSite).filter(Boolean).slice(0, 9);
-  let minis = '';
-  members.forEach((m) => {
-    if (m.iconType === 'upload' && m.iconValue) {
-      minis += `<div class="mini-icon" style="background-image:url('${m.iconValue}');background-size:cover;"></div>`;
-    } else {
-      const bg = m.iconType === 'preset' && PRESET_ICONS[m.iconValue]
-        ? PRESET_ICONS[m.iconValue] : firstCharOf(m.name);
-      minis += `<div class="mini-icon" style="background:${escapeHtml(m.color || '#888')};">${escapeHtml(bg)}</div>`;
-    }
+function addLabel(el, text) {
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = text;
+  label.title = text;
+  el.appendChild(label);
+}
+
+function addMenuButton(el, kind, id) {
+  const btn = document.createElement('button');
+  btn.className = 'cell-menu';
+  btn.title = '更多';
+  btn.innerHTML = '<svg style="width:14px;height:14px"><use href="#i-gear"/></svg>';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const rect = btn.getBoundingClientRect();
+    if (kind === 'site') app().openSiteMenu?.({ clientX: rect.left, clientY: rect.bottom + 4, preventDefault() {} }, id);
+    else if (kind === 'folder') app().openFolderMenu?.({ clientX: rect.left, clientY: rect.bottom + 4, preventDefault() {} }, id);
   });
-  el.innerHTML = `
-    <div class="icon-content">${minis || '<span style="color:#888;font-size:16px;">📁</span>'}</div>
-    <div class="icon-name">${escapeHtml(folder.name || '未命名文件夹')}</div>`;
-  el.addEventListener('click', () => window.__openFolderModal(folder.id));
-  el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); window.__openFolderMenu(e, folder.id); });
+  el.appendChild(btn);
+}
+
+/* ---------------- 站点卡片 ---------------- */
+function siteCell(site) {
+  const el = makeCell('site', site.id);
+  const icon = document.createElement('span');
+  icon.className = 'icon';
+  paintIcon(icon, site, { size: 64 });
+  el.appendChild(icon);
+  addLabel(el, site.name || '未命名');
+  addMenuButton(el, 'site', site.id);
+  el.addEventListener('click', () => {
+    const cfg = loadConfig();
+    openUrl(site.url, { newTab: cfg.openSiteNewTab });
+  });
+  el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); app().openSiteMenu?.(e, site.id); });
+  el.draggable = true;
+  el.addEventListener('dragstart', (e) => {
+    window.__compassDrag = 'item:' + site.id;
+    e.dataTransfer.setData('text/plain', window.__compassDrag);
+    e.dataTransfer.effectAllowed = 'move';
+    el.classList.add('dragging');
+  });
+  el.addEventListener('dragend', () => { el.classList.remove('dragging'); window.__compassDrag = ''; });
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') el.click(); });
   return el;
 }
 
-function onSiteClick(site) {
-  const cfg = loadConfig();
-  if (!site.url) return;
-  if (cfg.openSiteNewTab) { openUrl(site.url, { background: false }); }
-  else if (typeof chrome !== 'undefined' && chrome.tabs) { chrome.tabs.update({ url: site.url }); }
-  else { location.href = site.url; }
+/* ---------------- 文件夹卡片 ---------------- */
+function folderCell(folder) {
+  const el = makeCell('folder', folder.id);
+  const icon = document.createElement('span');
+  icon.className = 'icon folder-icon';
+  const members = folder.iconIds.map(getSite).filter(Boolean).slice(0, 4);
+  if (members.length === 0) {
+    icon.innerHTML = '<svg class="folder-empty-ico"><use href="#i-folder"/></svg>';
+  } else {
+    members.forEach((site) => {
+      const mini = document.createElement('span');
+      mini.className = 'folder-mini';
+      mini.style.background = site.color || '#eef0f4';
+      if (site.iconType === 'upload' && site.iconValue) {
+        mini.style.backgroundImage = `url("${site.iconValue.replace(/"/g, '%22')}")`;
+        mini.style.backgroundSize = 'cover';
+      } else if (site.iconType === 'color') {
+        mini.textContent = firstChar(site.name);
+      } else {
+        const src = chromeFaviconUrl(site.url, 32);
+        if (src) {
+          const img = document.createElement('img');
+          img.src = src;
+          img.alt = '';
+          img.addEventListener('error', () => { img.remove(); mini.textContent = firstChar(site.name); }, { once: true });
+          mini.appendChild(img);
+        } else {
+          mini.textContent = firstChar(site.name);
+        }
+      }
+      icon.appendChild(mini);
+    });
+  }
+  el.appendChild(icon);
+  addLabel(el, folder.name || '文件夹');
+  addMenuButton(el, 'folder', folder.id);
+  el.addEventListener('click', () => app().openFolder?.(folder.id));
+  el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); app().openFolderMenu?.(e, folder.id); });
+  el.draggable = true;
+  el.addEventListener('dragstart', (e) => {
+    window.__compassDrag = 'item:' + folder.id;
+    e.dataTransfer.setData('text/plain', window.__compassDrag);
+    e.dataTransfer.effectAllowed = 'move';
+    el.classList.add('dragging');
+  });
+  el.addEventListener('dragend', () => { el.classList.remove('dragging'); window.__compassDrag = ''; });
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') el.click(); });
+  return el;
+}
+
+/* ---------------- 小组件 ---------------- */
+function widgetCell(widget) {
+  const el = makeCell('widget', 'widget-' + widget.key, widget.cls);
+  const icon = document.createElement('span');
+  icon.className = 'icon widget-icon';
+  icon.innerHTML = `<svg><use href="#${widget.icon}"/></svg>`;
+  el.appendChild(icon);
+
+  let label = widget.label;
+  if (widget.key === 'weather') {
+    const weather = loadMeta().weather;
+    if (weather && weather.temp !== undefined && weather.temp !== null) label = `${Math.round(weather.temp)}°C`;
+  }
+  if (widget.key === 'todo') {
+    const count = pendingTodoCount();
+    if (count > 0) {
+      label = '待办事项';
+      const badge = document.createElement('span');
+      badge.className = 'widget-badge';
+      badge.textContent = count > 99 ? '99+' : String(count);
+      el.appendChild(badge);
+    }
+  }
+  addLabel(el, label);
+
+  el.addEventListener('click', () => {
+    const map = {
+      weather: 'openWeather', todo: 'openTodo', note: 'openNote',
+      folder: 'openFolders', settings: 'openSettings',
+    };
+    app()[map[widget.key]]?.();
+  });
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') el.click(); });
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    app().openWidgetMenu?.(e, el.dataset.id);
+  });
+  el.draggable = true;
+  el.addEventListener('dragstart', (e) => {
+    window.__compassDrag = 'item:' + el.dataset.id;
+    e.dataTransfer.setData('text/plain', window.__compassDrag);
+    e.dataTransfer.effectAllowed = 'move';
+    el.classList.add('dragging');
+  });
+  el.addEventListener('dragend', () => { el.classList.remove('dragging'); window.__compassDrag = ''; });
+  return el;
+}
+
+function addCell() {
+  const el = makeCell('add-cell');
+  const icon = document.createElement('span');
+  icon.className = 'icon';
+  icon.innerHTML = '<svg><use href="#i-plus"/></svg>';
+  el.appendChild(icon);
+  addLabel(el, '添加');
+  el.addEventListener('click', () => app().openPanel?.('add'));
+  return el;
 }
 
 export function renderGrid() {
-  const container = document.getElementById('grid-container');
-  container.innerHTML = '';
+  const grid = document.getElementById('grid');
+  if (!grid) return;
   const page = getCurrentPage();
   if (!page) return;
   const cfg = loadConfig();
+  grid.innerHTML = '';
+
   const items = page.siteIds.map((id) => {
+    if (id.startsWith('widget-')) {
+      const widget = WIDGETS.find((w) => 'widget-' + w.key === id);
+      return widget ? { kind: 'widget', data: widget } : null;
+    }
     const site = getSite(id);
-    if (site) return { type: 'site', data: site };
+    if (site) return { kind: 'site', data: site };
     const folder = getFolder(id);
-    if (folder) return { type: 'folder', data: folder };
+    if (folder) return { kind: 'folder', data: folder };
     return null;
   }).filter(Boolean);
 
+  const nodes = [];
+  items.forEach((item) => {
+    if (item.kind === 'site') nodes.push(siteCell(item.data));
+    else if (item.kind === 'folder') nodes.push(folderCell(item.data));
+    else nodes.push(widgetCell(item.data));
+  });
+  const capacity = capacityOfPage(page.id);
+  if (items.length < capacity) nodes.push(addCell());
+
+  nodes.forEach((node, i) => {
+    if (cfg.startAnimation) {
+      node.classList.add('start-animate');
+      node.style.animationDelay = (i * 22) + 'ms';
+    }
+    grid.appendChild(node);
+  });
+
   if (items.length === 0) {
     const tip = document.createElement('div');
-    tip.className = 'empty-grid-tip';
-    tip.textContent = '当前分页暂无站点，点击左侧「添加」或下方 ＋ 添加网站。';
-    container.appendChild(tip);
-  } else {
-    items.forEach((item, i) => {
-      const el = item.type === 'site' ? siteCardEl(item.data, { anim: cfg.startAnimation })
-                                     : folderCardEl(item.data, { anim: cfg.startAnimation });
-      if (cfg.startAnimation) el.style.animationDelay = (i * 30) + 'ms';
-      container.appendChild(el);
-    });
+    tip.className = 'grid-empty';
+    tip.textContent = '这一页还没有内容，点「＋」添加，或把图标拖到下方圆点换页。';
+    grid.appendChild(tip);
   }
-  container.appendChild(makeAddCard());
-}
-
-function makeAddCard() {
-  const add = document.createElement('div');
-  add.className = 'site-card add-card';
-  add.innerHTML = '<div class="icon-content">+</div><div class="icon-name">添加</div>';
-  add.addEventListener('click', () => {
-    if (window.__openSiteEditor) window.__openSiteEditor(null, { pageId: getCurrentPage().id });
-  });
-  return add;
-}
-
-/** 网格拖拽：站点→站点建组 / 站点→文件夹加入（boot 时调用一次） */
-export function initGridDragDrop() {
-  const container = document.getElementById('grid-container');
-  let lastTarget = null;
-  function clearTarget() { if (lastTarget) { lastTarget.classList.remove('drop-target'); lastTarget = null; } }
-  container.addEventListener('dragover', (e) => {
-    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-    const t = e.target.closest('.site-card');
-    if (t !== lastTarget) { clearTarget(); if (t) t.classList.add('drop-target'); lastTarget = t; }
-  });
-  container.addEventListener('dragleave', (e) => { if (!e.target.closest('.site-card')) clearTarget(); });
-  container.addEventListener('drop', async (e) => {
-    e.preventDefault(); clearTarget();
-    const sourceId = e.dataTransfer.getData('text/plain'); if (!sourceId) return;
-    const target = e.target.closest('.site-card'); if (!target || target.dataset.type === 'add') return;
-    const tId = target.dataset.id; if (sourceId === tId) return;
-    const page = getCurrentPage();
-    try {
-      if (target.dataset.type === 'folder') {
-        await addSiteToFolder(tId, sourceId);
-        page.siteIds = page.siteIds.filter((x) => x !== sourceId);
-        await db.put('pages', page);
-        renderAll(); toast('已把站点加入文件夹');
-      } else if (target.dataset.type === 'site') {
-        const name = window.prompt('新建文件夹名称', '新文件夹');
-        if (name === null) return;
-        const folder = await addFolder(name.trim() || '新文件夹', [sourceId, tId]);
-        page.siteIds = page.siteIds.filter((x) => x !== sourceId && x !== tId);
-        page.siteIds.push(folder.id);
-        await db.put('pages', page);
-        renderAll(); toast('已创建文件夹并收纳 2 个站点');
-      }
-    } catch (err) { toast('操作失败：' + (err && err.message ? err.message : '未知错误')); }
-  });
 }
 
 /* ---------------- 分页圆点 ---------------- */
 export function renderDots() {
   const wrap = document.getElementById('dots');
-  wrap.innerHTML = '';
+  if (!wrap) return;
   const { pages } = getState();
-  pages.forEach((page, idx) => {
-    const dot = document.createElement('div');
-    dot.className = 'page-dot' + (page.id === getCurrentPage().id ? ' active' : '');
+  const current = getCurrentPage();
+  wrap.innerHTML = '';
+  pages.forEach((page) => {
+    const dot = document.createElement('button');
+    dot.className = 'page-dot' + (page.id === current.id ? ' active' : '');
     dot.title = page.name;
-    dot.innerHTML = `<span class="dot-del" title="删除分页（不删除站点）">×</span>`;
-    dot.addEventListener('click', (e) => {
-      if (e.target.classList.contains('dot-del')) return;
-      setCurrentPageId(page.id);
+    dot.addEventListener('click', () => {
+      if (page.id === current.id) return;
+      setCurrentPage(page.id);
       renderAll();
     });
+    dot.addEventListener('contextmenu', (e) => { e.preventDefault(); app().openPageMenu?.(e, page.id); });
+    dot.addEventListener('dblclick', (e) => { e.preventDefault(); app().openPageMenu?.(e, page.id); });
     dot.draggable = true;
-    dot.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', 'page:' + page.id); e.dataTransfer.effectAllowed = 'move'; dot.classList.add('dragging'); });
-    dot.addEventListener('dragend', () => { dot.classList.remove('dragging'); });
+    dot.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', 'page:' + page.id);
+      e.dataTransfer.effectAllowed = 'move';
+      dot.classList.add('dragging');
+    });
+    dot.addEventListener('dragend', () => dot.classList.remove('dragging'));
     dot.addEventListener('dragover', (e) => { e.preventDefault(); dot.classList.add('drop-target'); });
-    dot.addEventListener('dragleave', () => { dot.classList.remove('drop-target'); });
+    dot.addEventListener('dragleave', () => dot.classList.remove('drop-target'));
     dot.addEventListener('drop', async (e) => {
       e.preventDefault(); e.stopPropagation();
       dot.classList.remove('drop-target');
-      const raw = e.dataTransfer.getData('text/plain');
-      if (!raw || !raw.startsWith('page:')) return;
-      const srcId = raw.slice(5);
-      if (srcId === page.id) return;
-      const order = getState().pages.map((p) => p.id);
-      const si = order.indexOf(srcId); if (si < 0) return;
-      order.splice(si, 1);
-      order.splice(order.indexOf(page.id), 0, srcId);
-      await reorderPages(order);
-      renderAll();
-      toast('分页已重新排序');
-    });
-    dot.querySelector('.dot-del').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (pages.length <= 1) { toast('至少保留一个分页'); return; }
-      const ok = await window.__confirm(`删除「${page.name}」？站点本体不会被删除，仅移出该分页。`);
-      if (!ok) return;
-      try { await removePage(page.id); renderAll(); toast('分页已删除，站点仍保留在站点库'); }
-      catch (err) { toast(err.message || '删除失败'); }
+      const raw = e.dataTransfer.getData('text/plain') || '';
+      if (raw.startsWith('page:')) {
+        const srcId = raw.slice(5);
+        if (srcId === page.id) return;
+        const order = getState().pages.map((p) => p.id);
+        const from = order.indexOf(srcId);
+        if (from < 0) return;
+        order.splice(from, 1);
+        order.splice(order.indexOf(page.id), 0, srcId);
+        await reorderPages(order);
+        renderAll();
+        return;
+      }
+      if (raw.startsWith('item:')) {
+        const itemId = raw.slice(5);
+        const fromPage = getState().pages.find((p) => p.siteIds.includes(itemId));
+        if (fromPage && fromPage.id !== page.id) {
+          await (await import('./store.js')).moveItemToPage(itemId, page.id);
+          renderAll();
+          toast(`已移动到「${page.name}」`);
+        }
+      }
     });
     wrap.appendChild(dot);
   });
 }
 
-export async function createPageAndGo() {
+export async function createPage() {
   const page = await addPage();
-  setCurrentPageId(page.id);
+  setCurrentPage(page.id);
   renderAll();
-  toast(`已新建「${page.name}」`);
+  toast(`已新建「${page.name}」，双击圆点可重命名`);
 }
 
-export function renderAll() { renderDots(); renderGrid(); }
+export async function removeCurrentPage() {
+  const page = getCurrentPage();
+  if (getState().pages.length <= 1) { toast('至少保留一个分页'); return; }
+  const ok = await (window.app?.confirm?.('删除这个分页？页面里的站点会移动到第 1 页，不会丢失。') ?? Promise.resolve(true));
+  if (!ok) return;
+  try {
+    await deletePage(page.id);
+    renderAll();
+    toast('分页已删除，内容已移到第 1 页');
+  } catch (e) { toast(e.message || '删除失败'); }
+}
+
+/* ---------------- 翻页 ---------------- */
+export function goPage(delta) {
+  const { pages } = getState();
+  if (pages.length < 2) return;
+  const idx = currentPageIndex();
+  const next = pages[(idx + delta + pages.length) % pages.length];
+  setCurrentPage(next.id);
+  renderAll();
+}
+
+export function renderAll() {
+  renderDots();
+  renderGrid();
+  document.dispatchEvent(new CustomEvent('app-render'));
+}
+
+export function initPager() {
+  document.getElementById('page-add')?.addEventListener('click', createPage);
+  document.getElementById('page-prev')?.addEventListener('click', () => goPage(-1));
+  document.getElementById('page-next')?.addEventListener('click', () => goPage(1));
+}
+
+/** 滚轮翻页：只在首页、无面板、无弹窗时生效 */
+export function initWheelPaging() {
+  const home = document.getElementById('home');
+  let last = 0;
+  home?.addEventListener('wheel', (e) => {
+    if (document.body.classList.contains('panel-open')) return;
+    if (document.querySelector('.modal.open')) return;
+    const now = Date.now();
+    if (now - last < 700) return;
+    if (Math.abs(e.deltaY) < 18) return;
+    if (getState().pages.length < 2) return;
+    last = now;
+    goPage(e.deltaY > 0 ? 1 : -1);
+  }, { passive: true });
+}
+
+export function refreshWeatherLabel() { renderGrid(); }
+
+export { WIDGETS };

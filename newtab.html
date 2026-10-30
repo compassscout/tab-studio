@@ -3,333 +3,324 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>新标签页</title>
+  <title>TAB STUDIO</title>
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/panel.css">
   <link rel="stylesheet" href="css/settings.css">
 </head>
 <body>
-  <div id="wallpaper-bg" class="layer"></div>
-  <div id="wallpaper-mask" class="layer"></div>
-  <div id="degraded-note">当前为 file:// 降级预览（静态骨架）；完整功能请在 chrome://extensions 加载本扩展目录。</div>
+  <!-- 图标符号库 -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 8.4a3.6 3.6 0 100 7.2 3.6 3.6 0 000-7.2z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19.2 12a7.2 7.2 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7.4 7.4 0 00-2.1-1.2L14.4 3h-4l-.3 2.6a7.4 7.4 0 00-2.1 1.2l-2.3-1-2 3.4 2 1.5A7.2 7.2 0 004.8 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1c.6.5 1.3.9 2.1 1.2l.3 2.6h4l.3-2.6a7.4 7.4 0 002.1-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5A2.5 2.5 0 016 5h3.2l1.8 2h7A2.5 2.5 0 0120.5 9.5v7A2.5 2.5 0 0118 19H6a2.5 2.5 0 01-2.5-2.5v-9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-todo" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 4.5V7h6V4.5M9 11h6M9 14.5h6M9 18h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M6.5 4h11A1.5 1.5 0 0119 5.5v13a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 017 18.5v-13A1.5 1.5 0 018.5 4z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 8.5h5M9.5 12h5M9.5 15.5h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-weather" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 3.2v1.4M9 13.4v1.4M3.2 9h1.4M13.4 9h1.4M4.9 4.9l1 1M12.1 12.1l1 1M13.1 4.9l-1 1M5.9 12.1l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10.5 18.5h7a2.5 2.5 0 000-5 3.4 3.4 0 00-6.4-1.2 2.9 2.9 0 00-3 2.7 2.5 2.5 0 002.4 3.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-windmill" viewBox="0 0 24 24"><path d="M12 12L5.2 8.2a2.6 2.6 0 013.4-4.2L12 12zM12 12l3.8-6.8a2.6 2.6 0 014.2 3.4L12 12zM12 12l6.8 3.8a2.6 2.6 0 01-3.4 4.2L12 12zM12 12l-3.8 6.8a2.6 2.6 0 01-4.2-3.4L12 12z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 4l2.3 4.9 5.2.7-3.8 3.7.9 5.2-4.6-2.5-4.6 2.5.9-5.2L4.5 9.6l5.2-.7L12 4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10M8 10.5l4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V6M8 9.5l4-4 4 4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 4.5h4M7 7l.8 12.2A1.8 1.8 0 009.6 21h4.8a1.8 1.8 0 001.8-1.8L17 7M10 10.5v6M14 10.5v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20l4.2-1 10-10a2.1 2.1 0 000-3l-.2-.2a2.1 2.1 0 00-3 0l-10 10L4 20z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19 12a7 7 0 11-2-4.9M19 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 12h16M12 4c2.2 2.4 3.2 5.1 3.2 8S14.2 17.6 12 20c-2.2-2.4-3.2-5.1-3.2-8S9.8 6.4 12 4z" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+  </svg>
+
+  <!-- 壁纸层 -->
+  <div id="wp-layer-a" class="wp-layer"></div>
+  <div id="wp-layer-b" class="wp-layer"></div>
+  <div id="wp-mask"></div>
 
   <div id="app">
-    <!-- 左侧固定侧边栏 -->
-    <aside id="sidebar">
-      <button id="sidebar-collapse" class="side-collapse" title="收起 / 展开侧边栏">‹</button>
-      <button class="side-tab active" id="tab-home" data-panel="panel-home">
-        <span class="side-icon">🏠</span><span>主页</span>
-      </button>
-      <button class="side-tab" id="tab-add" data-panel="panel-add">
-        <span class="side-icon">➕</span><span>添加</span>
-      </button>
-      <button class="side-tab" id="tab-me" data-panel="panel-me">
-        <span class="side-icon">👤</span><span>我的</span>
-      </button>
-      <button class="side-tab" id="tab-settings" data-panel="panel-settings">
-        <span class="side-icon">⚙️</span><span>设置</span>
-      </button>
-    </aside>
+    <header id="topbar">
+      <button id="menu-btn" class="round-btn ghost" title="菜单" aria-label="菜单"><svg><use href="#i-menu"/></svg></button>
+    </header>
 
-    <main id="main-view">
-      <!-- 主页面板 -->
-      <section id="panel-home" class="panel active">
-        <div id="home-search-wrap">
-          <div id="home-search-inner">
-            <div id="home-search-card">
-              <select id="search-engine" title="搜索引擎">
-                <option value="baidu">百度</option>
-                <option value="google">谷歌</option>
-                <option value="bing">必应</option>
-                <option value="yahoo">Yahoo</option>
-              </select>
-              <input id="home-search" type="text" placeholder="搜索网站或输入关键词" autocomplete="off">
-              <button id="search-clear" title="清除">×</button>
-              <button id="search-btn">搜索</button>
-            </div>
-            <div id="search-cats">
-              <button class="search-cat" data-cat="web">网页</button>
-              <button class="search-cat" data-cat="image">图片</button>
-              <button class="search-cat" data-cat="news">资讯</button>
-              <button class="search-cat" data-cat="video">视频</button>
-              <button class="search-cat" data-cat="map">地图</button>
-            </div>
-          </div>
+    <main id="home">
+      <section id="search-wrap">
+        <div id="search-cats" aria-label="搜索类别"></div>
+        <div id="search-card">
+          <button id="engine-btn" title="切换搜索引擎">
+            <span id="engine-logo">百</span>
+            <svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </button>
+          <input id="search-input" type="text" placeholder="输入并搜索" autocomplete="off" spellcheck="false">
+          <button id="search-clear" title="清除"><svg><use href="#i-close"/></svg></button>
+          <button id="search-submit" title="搜索"><svg><use href="#i-search"/></svg></button>
         </div>
-        <div id="grid-container"></div>
-        <button id="page-prev" class="page-arrow" title="上一页">‹</button>
-        <button id="page-next" class="page-arrow" title="下一页">›</button>
+        <div id="suggest-list" class="hidden"></div>
       </section>
 
-      <!-- 添加面板 -->
-      <section id="panel-add" class="panel">
-        <div id="add-search-bar">
-          <input id="add-search" type="text" placeholder="搜索网站" autocomplete="off">
-          <button id="add-clear" title="清除">×</button>
-          <button id="add-current-site-btn" class="btn btn-primary">添加当前页面</button>
-        </div>
-        <div id="add-body">
-          <ul id="add-cat-tree"></ul>
-          <div id="add-preview-list"></div>
-        </div>
-      </section>
+      <div id="grid" aria-label="快捷方式"></div>
 
-      <!-- 我的面板 -->
-      <section id="panel-me" class="panel">
-        <div class="me-card">
-          <div class="me-row" style="justify-content:flex-start;gap:16px;">
-            <div id="me-avatar" title="点击更换头像（一期占位）">博</div>
-            <input id="me-name" type="text" placeholder="昵称" maxlength="20">
-          </div>
-        </div>
+      <div id="pager">
+        <button id="page-prev" class="page-arrow" title="上一页"><svg style="transform:rotate(180deg)"><use href="#i-arrow-right"/></svg></button>
+        <div id="dots"></div>
+        <button id="page-add" class="dot-add" title="新建分页"><svg><use href="#i-plus"/></svg></button>
+        <button id="page-next" class="page-arrow" title="下一页"><svg><use href="#i-arrow-right"/></svg></button>
+      </div>
 
-        <div class="me-card">
-          <div class="me-title">同步（一期仅本地备份，云同步为二期规划）</div>
-          <div class="me-row">
-            <span>与其他设备保持同步</span>
-            <label class="switch"><input type="checkbox" id="sync-toggle"><span class="slider"></span></label>
-          </div>
-          <div class="me-row"><span class="row-note">上次同步时间：<span id="last-sync-time">暂无记录</span></span></div>
-          <div class="me-row"><span>管理历史备份节点</span><button class="btn btn-ghost" id="manage-backups-btn">查看</button></div>
-          <div class="me-row"><span>立即备份</span><button class="btn btn-primary" id="backup-now-btn">立即备份</button></div>
-        </div>
-
-        <div class="me-card">
-          <div class="me-title">备份与恢复</div>
-          <div class="me-row"><span>导出备份数据</span><button class="btn btn-ghost" id="export-btn">导出 .infinity</button></div>
-          <div class="me-row"><span>导入备份数据</span><button class="btn btn-ghost" id="import-btn">选择文件导入</button></div>
-          <div class="me-row"><span>修复数据</span><button class="btn btn-ghost" id="repair-btn">修复并查看摘要</button></div>
-          <input type="file" id="import-file" accept=".infinity" style="display:none;">
-        </div>
-
-        <div class="me-card">
-          <div class="me-title">用户评价</div>
-          <div class="me-row">
-            <span>五星好评</span>
-            <div class="stars" id="stars">
-              <span class="star" data-v="1">★</span><span class="star" data-v="2">★</span>
-              <span class="star" data-v="3">★</span><span class="star" data-v="4">★</span>
-              <span class="star" data-v="5">★</span>
-            </div>
-          </div>
-          <div class="me-row"><span>反馈问题与建议</span><button class="btn btn-ghost" id="feedback-btn">提交反馈（一期占位）</button></div>
-        </div>
-
-        <div class="me-card">
-          <div class="me-title">打赏支持</div>
-          <div class="donate-placeholder">打赏二维码区（一期占位，二期接入）</div>
-        </div>
-      </section>
-
-      <!-- 设置面板 -->
-      <section id="panel-settings" class="panel">
-        <div id="settings-header">
-          <span id="settings-title">设置</span>
-          <div id="mode-toggle">
-            <button id="mode-standard" class="active">标准模式</button>
-            <button id="mode-minimal">极简模式</button>
-          </div>
-        </div>
-
-        <div class="settings-group" id="group-wallpaper">
-          <h3>壁纸</h3>
-          <div class="setting-row"><span class="row-label">当前壁纸预览</span><div class="row-control"><div id="wp-thumb"></div><button class="btn btn-ghost" id="settings-wp-download">下载</button></div></div>
-          <div class="setting-row"><span class="row-label">遮罩浓度</span><div class="row-control"><input type="range" id="cfg-mask" min="0" max="100"><span class="range-value" id="cfg-mask-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">模糊度</span><div class="row-control"><input type="range" id="cfg-blur" min="0" max="20"><span class="range-value" id="cfg-blur-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">定时轮换（与风车同一收藏/全量池）</span><label class="switch"><input type="checkbox" id="cfg-wp-auto"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">轮换频率</span><div class="row-control"><select id="cfg-rotate-interval">
-            <option value="1h">1 小时</option><option value="12h">12 小时</option>
-            <option value="24h">24 小时</option><option value="session">每次打开新标签页</option>
-          </select></div></div>
-        </div>
-
-        <div class="settings-group" id="group-opentarget">
-          <h3>目标打开方式</h3>
-          <div class="setting-row"><span class="row-label">在新标签页打开网站</span><label class="switch"><input type="checkbox" id="cfg-open-site"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">第三方搜索结果</span><label class="switch"><input type="checkbox" id="cfg-open-search"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">书签链接</span><label class="switch"><input type="checkbox" id="cfg-open-bookmark"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">历史记录</span><label class="switch"><input type="checkbox" id="cfg-open-history"><span class="slider"></span></label></div>
-        </div>
-
-        <div class="settings-group" id="group-notify">
-          <h3>通知（一期仅界面开关，未接入后端）</h3>
-          <div class="setting-row"><span class="row-label">Gmail 邮件通知</span><label class="switch"><input type="checkbox" id="cfg-gmail"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">铃声</span><label class="switch"><input type="checkbox" id="cfg-ring"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">图标上显示未读 Gmail 数量</span><label class="switch"><input type="checkbox" id="cfg-gmail-badge"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">图标上显示待办数量</span><label class="switch"><input type="checkbox" id="cfg-todo-badge"><span class="slider"></span></label></div>
-        </div>
-
-        <div class="settings-group" id="group-view">
-          <h3>视图</h3>
-          <div class="setting-row"><span class="row-label">屏幕缩放</span><div class="row-control"><input type="range" id="cfg-screen-scale" min="0.8" max="1.2" step="0.05"><span class="range-value" id="cfg-screen-scale-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">侧边栏缩放</span><div class="row-control"><input type="range" id="cfg-sidebar-scale" min="0.8" max="1.2" step="0.05"><span class="range-value" id="cfg-sidebar-scale-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">右下角随机壁纸按钮</span><label class="switch"><input type="checkbox" id="cfg-windmill"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">顶部常用网站</span><label class="switch"><input type="checkbox" id="cfg-topsites"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">顶部书签栏</span><label class="switch"><input type="checkbox" id="cfg-topbookmarks"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">翻页按钮</span><label class="switch"><input type="checkbox" id="cfg-pagebtns"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">隐藏顶部 AI 图标（占位）</span><label class="switch"><input type="checkbox" id="cfg-hideai"><span class="slider"></span></label></div>
-        </div>
-
-        <div class="settings-group" id="group-layout">
-          <h3>布局</h3>
-          <div class="layout-options" id="layout-options"></div>
-        </div>
-
-        <div class="settings-group" id="group-icon">
-          <h3>图标</h3>
-          <div class="setting-row"><span class="row-label">隐藏图标名称</span><label class="switch"><input type="checkbox" id="cfg-hide-name"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">图标阴影</span><label class="switch"><input type="checkbox" id="cfg-icon-shadow"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">启动动画</span><label class="switch"><input type="checkbox" id="cfg-start-anim"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">图标圆角</span><div class="row-control"><input type="range" id="cfg-icon-radius" min="0" max="20"><span class="range-value" id="cfg-icon-radius-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">图标不透明度</span><div class="row-control"><input type="range" id="cfg-icon-opacity" min="0.2" max="1" step="0.05"><span class="range-value" id="cfg-icon-opacity-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">图标大小</span><div class="row-control"><input type="range" id="cfg-icon-size" min="40" max="96"><span class="range-value" id="cfg-icon-size-v"></span></div></div>
-        </div>
-
-        <div class="settings-group" id="group-searchbox">
-          <h3>搜索框</h3>
-          <div class="setting-row"><span class="row-label">隐藏搜索框</span><label class="switch"><input type="checkbox" id="cfg-hide-search"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">显示搜索建议</span><label class="switch"><input type="checkbox" id="cfg-suggest"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">保留搜索框内容</span><label class="switch"><input type="checkbox" id="cfg-keep-input"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">隐藏搜索类别</span><label class="switch"><input type="checkbox" id="cfg-hide-cat"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">隐藏搜索按钮</span><label class="switch"><input type="checkbox" id="cfg-hide-search-btn"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">搜索框大小</span><div class="row-control"><input type="range" id="cfg-search-size" min="0.8" max="1.3" step="0.05"><span class="range-value" id="cfg-search-size-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">搜索框圆角</span><div class="row-control"><input type="range" id="cfg-search-radius" min="0" max="24"><span class="range-value" id="cfg-search-radius-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">搜索框不透明度</span><div class="row-control"><input type="range" id="cfg-search-opacity" min="0.3" max="1" step="0.05"><span class="range-value" id="cfg-search-opacity-v"></span></div></div>
-        </div>
-
-        <div class="settings-group" id="group-font">
-          <h3>字体</h3>
-          <div class="setting-row"><span class="row-label">字体阴影</span><label class="switch"><input type="checkbox" id="cfg-font-shadow"><span class="slider"></span></label></div>
-          <div class="setting-row"><span class="row-label">字体大小</span><div class="row-control"><input type="range" id="cfg-font-size" min="11" max="20"><span class="range-value" id="cfg-font-size-v"></span></div></div>
-          <div class="setting-row"><span class="row-label">字体颜色</span><div class="row-control font-colors" id="font-colors">
-            <span class="font-color-swatch" data-color="#ffffff" style="background:#ffffff"></span>
-            <span class="font-color-swatch" data-color="#ff4e50" style="background:#ff4e50"></span>
-            <span class="font-color-swatch" data-color="#ff9500" style="background:#ff9500"></span>
-            <span class="font-color-swatch" data-color="#ffd60a" style="background:#ffd60a"></span>
-            <span class="font-color-swatch" data-color="#34c759" style="background:#34c759"></span>
-            <span class="font-color-swatch" data-color="#64d2ff" style="background:#64d2ff"></span>
-            <span class="font-color-swatch" data-color="#0a84ff" style="background:#0a84ff"></span>
-            <span class="font-color-swatch" data-color="#bf5af2" style="background:#bf5af2"></span>
-            <input type="color" id="custom-font-color" title="自定义颜色">
-          </div></div>
-        </div>
-
-        <div class="settings-group" id="group-anim">
-          <h3>动画</h3>
-          <div class="anim-options" id="anim-options">
-            <button class="btn btn-ghost" data-anim="default">默认</button>
-            <button class="btn btn-ghost" data-anim="bounce">回弹</button>
-            <button class="btn btn-ghost" data-anim="fade">淡入</button>
-          </div>
-        </div>
-
-        <div class="settings-group" id="group-reset">
-          <h3>重置设置</h3>
-          <div class="me-row"><span>仅恢复样式配置默认值，不删除站点 / 文件夹 / 分页 / 壁纸 / 待办数据</span><button class="btn btn-danger" id="reset-btn">还原设置</button></div>
-        </div>
-      </section>
+      <button id="windmill" class="round-btn windmill" title="随机换一张壁纸" aria-label="随机换壁纸">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 12L5.2 8.2a2.6 2.6 0 013.4-4.2L12 12z" fill="#ff5a5f"/>
+          <path d="M12 12l3.8-6.8a2.6 2.6 0 014.2 3.4L12 12z" fill="#ffb400"/>
+          <path d="M12 12l6.8 3.8a2.6 2.6 0 01-3.4 4.2L12 12z" fill="#34c759"/>
+          <path d="M12 12l-3.8 6.8a2.6 2.6 0 01-4.2-3.4L12 12z" fill="#2d6bfe"/>
+          <circle cx="12" cy="12" r="2.1" fill="#fff" stroke="#e6e8ec" stroke-width="0.8"/>
+        </svg>
+      </button>
     </main>
 
-    <!-- 分页圆点 -->
-    <div id="pagination-bar">
-      <div id="dots" style="display:flex;align-items:center;gap:var(--page-dot-gap);"></div>
-      <button id="page-add-btn" title="新建分页">+</button>
-    </div>
-
-    <!-- 右下角悬浮 -->
-    <div id="floating-corner">
-      <button id="todo-fab" title="待办事项">✏️</button>
-      <button id="windmill-btn" title="随机换壁纸">🌀</button>
-    </div>
+    <!-- macOS 风格 Dock -->
+    <nav id="dock" aria-label="Dock"></nav>
   </div>
 
-  <!-- 文件夹浮窗 -->
-  <div id="folder-overlay" class="overlay modal-hidden"></div>
-  <section id="folder-modal" class="modal modal-hidden">
-    <div id="folder-header">
-      <span id="folder-title">文件夹</span>
-      <div id="folder-actions">
-        <button class="btn btn-ghost" id="folder-edit-mode-btn">编辑模式</button>
-        <button class="btn btn-ghost" id="folder-close">关闭</button>
-      </div>
-    </div>
-    <div id="folder-grid"></div>
-    <div id="folder-empty-tip" class="modal-hidden">文件夹为空，可通过站点卡右键「新建文件夹 / 添加到分页」收纳站点。</div>
-  </section>
-  <aside id="folder-edit-panel">
-    <h3 id="fe-panel-title">编辑站点</h3>
-    <div class="form-row"><label>网址</label><input type="text" id="fe-url" placeholder="https://example.com"></div>
-    <div class="form-row"><label>名称</label><input type="text" id="fe-name" placeholder="站点名称"></div>
-    <div class="form-row"><label>图标颜色</label><div id="fe-color-row"></div></div>
-    <div class="form-row"><label>图标预设</label><div id="fe-preset-row"></div></div>
-    <div class="form-row"><label>图标预览</label><div id="fe-preview"></div></div>
-    <div id="fe-error" style="color:var(--c-danger);font-size:12px;min-height:16px;"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" id="fe-cancel">取消</button>
-      <button class="btn btn-primary" id="fe-ok">确定</button>
+  <!-- 右侧面板 -->
+  <div id="panel-overlay"></div>
+  <aside id="panel" aria-label="侧边面板">
+    <button id="panel-close" class="panel-close" title="关闭"><svg><use href="#i-close"/></svg></button>
+    <nav id="panel-tabs">
+      <button class="panel-tab" data-tab="add">
+        <span class="tab-icon"><svg><use href="#i-plus"/></svg></span><span>添加</span>
+      </button>
+      <button class="panel-tab" data-tab="me">
+        <span class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.8 20c.8-3.7 3.6-5.6 7.2-5.6s6.4 1.9 7.2 5.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><span>我的</span>
+      </button>
+      <button class="panel-tab" data-tab="settings">
+        <span class="tab-icon"><svg><use href="#i-gear"/></svg></span><span>设置</span>
+      </button>
+    </nav>
+    <div id="panel-body">
+      <!-- 添加 -->
+      <section class="panel-page" data-page="add">
+        <div class="add-search-row">
+          <label class="field">
+            <svg class="field-icon"><use href="#i-search"/></svg>
+            <input id="add-search" type="text" placeholder="搜索网站" autocomplete="off">
+          </label>
+          <button id="add-current" class="square-btn" title="添加当前页面"><svg><use href="#i-plus"/></svg></button>
+        </div>
+        <div id="add-cats" class="chip-row"></div>
+        <div id="add-list"></div>
+      </section>
+
+      <!-- 我的 -->
+      <section class="panel-page" data-page="me">
+        <div class="me-profile">
+          <button id="me-avatar" class="avatar" title="更换头像">C</button>
+          <div class="me-meta">
+            <input id="me-name" type="text" placeholder="点击设置昵称" maxlength="20">
+            <span class="me-sub">所有数据保存在本机</span>
+          </div>
+        </div>
+
+        <div class="me-stats">
+          <div><b id="stat-sites">0</b><span>站点</span></div>
+          <div><b id="stat-folders">0</b><span>文件夹</span></div>
+          <div><b id="stat-pages">0</b><span>分页</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">备份与恢复</div>
+          <p class="card-desc">导出为 <code>.infinity</code> 文件，可在另一台电脑导入恢复站点、文件夹、分页、壁纸与设置。</p>
+          <div class="btn-row">
+            <button id="export-btn" class="btn primary">导出备份</button>
+            <button id="import-btn" class="btn">导入备份</button>
+            <button id="repair-btn" class="btn ghost">修复数据</button>
+          </div>
+          <input id="import-file" type="file" accept=".infinity,application/json" hidden>
+        </div>
+
+        <div class="card">
+          <div class="card-row">
+            <div>
+              <div class="card-title">云同步</div>
+              <p class="card-desc">未接入服务端；可把导出的备份文件放进网盘实现"手动同步"。</p>
+            </div>
+            <span class="badge">未启用</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-row">
+            <div>
+              <div class="card-title">关于</div>
+              <p class="card-desc">TAB STUDIO v2.1 · 本地优先 · 无账号</p>
+            </div>
+            <button id="about-btn" class="btn ghost">快捷键</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section class="panel-page" data-page="settings">
+        <div class="mode-toggle">
+          <button id="mode-standard" class="active">标准模式</button>
+          <button id="mode-minimal">极简模式</button>
+        </div>
+        <div id="settings-root"></div>
+      </section>
     </div>
   </aside>
 
-  <!-- 通用站点编辑弹窗 -->
-  <section id="site-editor-modal" class="modal modal-hidden">
-    <h3 id="se-title">编辑站点</h3>
-    <div class="form-row"><label>网址</label><input type="text" id="se-url" placeholder="https://example.com"></div>
-    <div class="form-row"><label>名称</label><input type="text" id="se-name" placeholder="站点名称"></div>
-    <div class="form-row"><label>图标类型</label>
-      <div class="icon-type-row">
-        <label><input type="radio" name="se-icon-type" value="color" checked>纯色</label>
-        <label><input type="radio" name="se-icon-type" value="preset">预设</label>
-        <label><input type="radio" name="se-icon-type" value="upload">上传</label>
-      </div>
-    </div>
-    <div class="form-row" id="se-color-row-wrap"><label>图标颜色</label><div id="se-color-row"></div></div>
-    <div class="form-row modal-hidden" id="se-preset-row-wrap"><label>预设图标</label><div id="se-preset-row"></div></div>
-    <div class="form-row modal-hidden" id="se-upload-row-wrap"><label>本地图片（自动压缩）</label><input type="file" id="se-upload-file" accept="image/*"></div>
-    <div class="form-row"><label>图标预览</label><div id="se-preview"></div></div>
-    <div id="se-error"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" id="se-cancel">取消</button>
-      <button class="btn btn-primary" id="se-ok">确定</button>
-    </div>
-  </section>
+  <!-- 顶部菜单 -->
+  <div id="top-menu" class="popover hidden">
+    <button data-act="add-site">添加站点</button>
+    <button data-act="new-folder">新建文件夹</button>
+    <button data-act="wallpaper">壁纸库</button>
+    <button data-act="add-tab">添加网站</button>
+    <div class="pop-sep"></div>
+    <button data-act="history">历史记录</button>
+    <button data-act="bookmarks">书签</button>
+    <div class="pop-sep"></div>
+    <button data-act="settings">设置</button>
+    <button data-act="me">我的</button>
+  </div>
 
   <!-- 右键菜单 -->
-  <div id="context-menu" class="modal-hidden"></div>
+  <div id="ctx-menu" class="popover hidden"></div>
 
-  <!-- 确认弹窗 -->
-  <section id="confirm-modal" class="modal modal-hidden">
-    <div id="confirm-text">确认执行？</div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" id="confirm-cancel">取消</button>
-      <button class="btn btn-danger" id="confirm-ok">确定</button>
+  <!-- 站点编辑 -->
+  <div class="sheet-backdrop" data-close="site-editor"></div>
+  <section class="modal" id="site-editor" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3 id="se-title">新建站点</h3><button class="icon-btn" data-close="site-editor"><svg><use href="#i-close"/></svg></button></div>
+    <div class="modal-body">
+      <label class="form-row"><span>网址</span><input id="se-url" type="text" placeholder="https://example.com" autocomplete="off"></label>
+      <label class="form-row"><span>名称</span><input id="se-name" type="text" placeholder="留空则自动识别" autocomplete="off"></label>
+      <div class="form-row"><span>图标</span>
+        <div class="icon-tabs" id="se-icon-tabs">
+          <button data-mode="auto" class="active">自动</button>
+          <button data-mode="color">纯色</button>
+          <button data-mode="upload">上传</button>
+        </div>
+      </div>
+      <div class="form-row" id="se-color-row"><span>颜色</span><div id="se-colors" class="swatches"></div></div>
+      <div class="form-row hidden" id="se-upload-row"><span>图片</span>
+        <div class="upload-row"><button id="se-upload-btn" class="btn">选择图片</button><span id="se-upload-name" class="muted">未选择</span><input id="se-file" type="file" accept="image/*" hidden></div>
+      </div>
+      <div class="se-preview-row">
+        <div id="se-preview" class="icon-preview"></div>
+        <p class="muted">自动模式会读取 Chrome 本地缓存的网站图标；纯色模式使用首字 + 背景色。</p>
+      </div>
+      <div id="se-error" class="form-error"></div>
     </div>
+    <div class="modal-foot"><button class="btn" data-close="site-editor">取消</button><button id="se-save" class="btn primary">保存</button></div>
   </section>
 
-  <!-- 待办弹窗 -->
-  <section id="todo-modal" class="modal modal-hidden">
-    <h4>待办事项（输入自动保存）</h4>
-    <textarea id="todo-text" placeholder="在这里记录待办，输入后自动保存到本地。"></textarea>
-    <div id="todo-saved-hint"></div>
-  </section>
-
-  <!-- 壁纸预览弹窗 -->
-  <section id="wp-preview-modal" class="modal modal-hidden">
-    <div id="wp-preview-img"></div>
-    <div id="wp-preview-actions">
-      <button class="btn btn-ghost" id="wp-fav-btn">收藏</button>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" id="wp-download-btn">下载</button>
-        <button class="btn btn-ghost" id="wp-close">关闭</button>
+  <!-- 文件夹 -->
+  <div class="sheet-backdrop" data-close="folder-modal"></div>
+  <section class="modal folder-modal" id="folder-modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="folder-title">文件夹</h3>
+      <div class="head-actions">
+        <button id="folder-edit" class="btn small ghost">编辑</button>
+        <button class="icon-btn" data-close="folder-modal"><svg><use href="#i-close"/></svg></button>
       </div>
     </div>
+    <div id="folder-grid" class="folder-grid"></div>
+    <div id="folder-empty" class="empty-tip hidden">文件夹是空的。把站点拖到文件夹卡片上即可收纳。</div>
+    <div class="modal-foot folder-foot">
+      <button id="folder-add" class="btn ghost"><svg class="btn-ico"><use href="#i-plus"/></svg>添加站点</button>
+      <button id="folder-open-all" class="btn ghost">打开全部</button>
+      <button id="folder-delete" class="btn danger-ghost">删除文件夹</button>
+    </div>
   </section>
 
-  <div id="toast"></div>
+  <!-- 壁纸库 -->
+  <div class="sheet-backdrop" data-close="wallpaper-modal"></div>
+  <section class="modal wallpaper-modal" id="wallpaper-modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3>壁纸库</h3>
+      <div class="head-actions">
+        <button id="wp-upload-btn" class="btn small"><svg class="btn-ico"><use href="#i-upload"/></svg>上传</button>
+        <button class="icon-btn" data-close="wallpaper-modal"><svg><use href="#i-close"/></svg></button>
+      </div>
+    </div>
+    <div class="wp-toolbar">
+      <div class="seg" id="wp-tabs">
+        <button data-tab="all" class="active">精选</button>
+        <button data-tab="fav">收藏</button>
+        <button data-tab="mine">我的</button>
+      </div>
+      <div class="wp-actions">
+        <button id="wp-online-bing" class="btn small ghost">必应每日</button>
+        <label class="mini-switch"><input type="checkbox" id="wp-online-toggle"><span></span>在线源</label>
+      </div>
+    </div>
+    <div id="wp-grid" class="wp-grid"></div>
+    <input id="wp-file" type="file" accept="image/*" hidden>
+  </section>
 
-  <!-- 主模块（MV3 扩展环境加载；file:// 下模块受 CORS 限制，由 degrade.js 提示静态降级预览） -->
+  <!-- 待办 -->
+  <div class="sheet-backdrop" data-close="todo-modal"></div>
+  <section class="modal todo-modal" id="todo-modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>待办事项</h3><button class="icon-btn" data-close="todo-modal"><svg><use href="#i-close"/></svg></button></div>
+    <div class="modal-body">
+      <div class="todo-input-row"><input id="todo-input" type="text" placeholder="输入后按 Enter 添加"><button id="todo-add" class="btn primary small">添加</button></div>
+      <div id="todo-list" class="todo-list"></div>
+      <div id="todo-empty" class="empty-tip small">还没有待办，先写一条吧。</div>
+    </div>
+  </section>
+
+  <!-- 笔记 -->
+  <div class="sheet-backdrop" data-close="note-modal"></div>
+  <section class="modal note-modal" id="note-modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>笔记</h3><span id="note-state" class="muted small">已保存</span><button class="icon-btn" data-close="note-modal"><svg><use href="#i-close"/></svg></button></div>
+    <textarea id="note-text" placeholder="随手记点什么…（自动保存）" spellcheck="false"></textarea>
+  </section>
+
+  <!-- 天气 -->
+  <div class="sheet-backdrop" data-close="weather-modal"></div>
+  <section class="modal weather-modal" id="weather-modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>天气</h3><button class="icon-btn" data-close="weather-modal"><svg><use href="#i-close"/></svg></button></div>
+    <div class="modal-body">
+      <div id="weather-body" class="weather-body"><span class="muted">正在获取天气…</span></div>
+      <div class="city-row">
+        <input id="weather-city" type="text" placeholder="城市名称，例如 上海">
+        <button id="weather-search" class="btn small">查询</button>
+      </div>
+      <p class="muted small">天气来自 Open-Meteo（可选联网）；关闭联网后仅显示占位。</p>
+    </div>
+  </section>
+
+  <!-- 文件夹总览 -->
+  <div class="sheet-backdrop" data-close="folders-modal"></div>
+  <section class="modal folders-modal" id="folders-modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>文件夹</h3><div class="head-actions"><button id="folders-new" class="btn small">新建</button><button class="icon-btn" data-close="folders-modal"><svg><use href="#i-close"/></svg></button></div></div>
+    <div id="folders-list" class="folders-list"></div>
+  </section>
+
+  <!-- 历史记录 / 书签 -->
+  <div class="sheet-backdrop" data-close="browser-modal"></div>
+  <section class="modal browser-modal" id="browser-modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="bd-title">历史记录</h3>
+      <div class="head-actions">
+        <button id="bd-grant" class="btn small primary hidden">授权读取</button>
+        <button class="icon-btn" data-close="browser-modal"><svg><use href="#i-close"/></svg></button>
+      </div>
+    </div>
+    <div class="bd-search"><label class="field"><svg class="field-icon"><use href="#i-search"/></svg><input id="bd-search" type="text" placeholder="搜索标题或网址" autocomplete="off"></label></div>
+    <div id="bd-body" class="bd-body"></div>
+  </section>
+
+  <!-- 确认 -->
+  <div class="sheet-backdrop" data-close="confirm-modal"></div>
+  <section class="modal confirm-modal" id="confirm-modal" role="alertdialog" aria-modal="true">
+    <div class="modal-body"><p id="confirm-text">确认执行？</p></div>
+    <div class="modal-foot"><button id="confirm-cancel" class="btn">取消</button><button id="confirm-ok" class="btn danger">确定</button></div>
+  </section>
+
+  <div id="toast" role="status"></div>
+
   <script type="module" src="js/main.js"></script>
-  <script src="js/degrade.js"></script>
 </body>
 </html>

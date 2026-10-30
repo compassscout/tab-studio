@@ -1,8 +1,7 @@
-/* db.js — IndexedDB 封装：库 infinity_newtab，仓库 sites/folders/pages/wallpapers/todos */
-
-const DB_NAME = 'infinity_newtab';
-const DB_VERSION = 1;
-export const STORES = ['sites', 'folders', 'pages', 'wallpapers', 'todos'];
+/* db.js — IndexedDB 封装：库 compass_newtab，业务表 sites/folders/pages/wallpapers/todos/notes */
+const DB_NAME = 'compass_newtab';
+const DB_VERSION = 2;
+export const STORES = ['sites', 'folders', 'pages', 'wallpapers', 'todos', 'notes'];
 
 let dbPromise = null;
 
@@ -10,22 +9,16 @@ function openDB() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
+    req.onupgradeneeded = () => {
+      const db = req.result;
       STORES.forEach((name) => {
-        if (!db.objectStoreNames.contains(name)) {
-          db.createObjectStore(name, { keyPath: 'id' });
-        }
+        if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' });
       });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
   return dbPromise;
-}
-
-function tx(storeName, mode) {
-  return openDB().then((db) => db.transaction(storeName, mode).objectStore(storeName));
 }
 
 function reqToPromise(request) {
@@ -35,22 +28,42 @@ function reqToPromise(request) {
   });
 }
 
+async function store(name, mode) {
+  const db = await openDB();
+  return db.transaction(name, mode).objectStore(name);
+}
+
 export const db = {
-  async getAll(store) { return reqToPromise((await tx(store, 'readonly')).getAll()); },
-  async get(store, id) { return reqToPromise((await tx(store, 'readonly')).get(id)); },
-  async put(store, value) { return reqToPromise((await tx(store, 'readwrite')).put(value)); },
-  async delete(store, id) { return reqToPromise((await tx(store, 'readwrite')).delete(id)); },
-  async clear(store) { return reqToPromise((await tx(store, 'readwrite')).clear()); },
-  async bulkPut(store, values) {
-    const t = await tx(store, 'readwrite');
-    values.forEach((v) => t.put(v));
+  async getAll(name) { return reqToPromise((await store(name, 'readonly')).getAll()); },
+  async get(name, id) { return reqToPromise((await store(name, 'readonly')).get(id)); },
+  async put(name, value) { return reqToPromise((await store(name, 'readwrite')).put(value)); },
+  async delete(name, id) { return reqToPromise((await store(name, 'readwrite')).delete(id)); },
+  async clear(name) { return reqToPromise((await store(name, 'readwrite')).clear()); },
+  async bulkPut(name, values) {
+    const db = await openDB();
+    const tx = db.transaction(name, 'readwrite');
+    const os = tx.objectStore(name);
+    values.forEach((v) => os.put(v));
     return new Promise((resolve, reject) => {
-      t.transaction.oncomplete = () => resolve();
-      t.transaction.onerror = () => reject(t.transaction.error);
-      t.transaction.onabort = () => reject(t.transaction.error || new Error('事务中止'));
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('事务中止'));
     });
   },
-  async clearAll() {
-    for (const s of STORES) await this.clear(s);
+  async clearAll() { for (const s of STORES) await this.clear(s); },
+  /** 一次性覆盖多表（同一个事务，失败自动回滚） */
+  async replaceAll(map) {
+    const db = await openDB();
+    const tx = db.transaction(STORES, 'readwrite');
+    STORES.forEach((name) => {
+      const os = tx.objectStore(name);
+      os.clear();
+      (map[name] || []).forEach((v) => os.put(v));
+    });
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('事务中止'));
+    });
   },
 };

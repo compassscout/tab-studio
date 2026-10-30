@@ -1,286 +1,283 @@
-/* folder.js — 文件夹浮窗（网格 / 编辑模式红叉 / 内部排序）+ 右侧滑出编辑面板 + 通用站点编辑弹窗 */
-import { getFolder, getSite, addSiteToFolder, removeSiteFromFolder, reorderFolder,
-         updateSite, updateFolder, deleteFolder, addFolder, getState, getCurrentPage } from './store.js';
-import { db } from './db.js';
-import { normalizeUrl, toast, escapeHtml, readFileAsDataURL, compressImageToDataURL, openUrl } from './utils.js';
-import { PRESET_ICONS } from './presets.js';
-import { PRESET_COLORS, iconInner, renderGrid, renderAll } from './render.js';
+/* folder.js — 站点编辑弹窗 + 文件夹弹窗（收纳/移出/排序/打开全部） */
+import {
+  getState, getSite, getFolder, addSite, updateSite, addSiteToFolder,
+  removeSiteFromFolder, reorderFolder, updateFolder, deleteFolder, getCurrentPage,
+} from './store.js';
+import { normalizeUrl, hostNameOf, toast, openUrl, readFileAsDataURL, compressImage, firstChar } from './utils.js';
+import { paintIcon } from './favicon.js';
+import { renderAll, renderGrid } from './render.js';
+import { openModal, closeModal, confirmAction, askText } from './dialog.js';
 
+const COLORS = ['#4c8bf5', '#ff6b6b', '#f5a623', '#34c759', '#9b59b6', '#16a085', '#e67e22', '#24292f',
+  '#e1251b', '#ff5000', '#0066ff', '#fb7299', '#00a6a0', '#8e44ad', '#2c3e50', '#7f8c8d'];
+
+let editor = { siteId: null, pageId: null, folderId: null, mode: 'auto', color: COLORS[0], upload: '' };
 let currentFolderId = null;
 let folderEditMode = false;
-let editingSiteId = null;
 
-export function openFolderModal(folderId) {
-  currentFolderId = folderId;
-  folderEditMode = false;
-  const folder = getFolder(folderId);
-  if (!folder) return;
-  document.getElementById('folder-title').textContent = folder.name;
-  document.getElementById('folder-modal').classList.remove('modal-hidden');
-  document.getElementById('folder-overlay').classList.remove('modal-hidden');
-  document.getElementById('folder-edit-mode-btn').textContent = '编辑模式';
-  renderFolderGrid();
+/* ---------------- 站点编辑 ---------------- */
+function syncModePanels() {
+  document.querySelectorAll('#se-icon-tabs button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.mode === editor.mode);
+  });
+  document.getElementById('se-color-row')?.classList.toggle('hidden', editor.mode !== 'color');
+  document.getElementById('se-upload-row')?.classList.toggle('hidden', editor.mode !== 'upload');
 }
 
-function closeFolderModal() {
-  document.getElementById('folder-modal').classList.add('modal-hidden');
-  document.getElementById('folder-overlay').classList.add('modal-hidden');
-  document.getElementById('folder-edit-panel').classList.remove('open');
-  currentFolderId = null;
+function paintPreview() {
+  const preview = document.getElementById('se-preview');
+  if (!preview) return;
+  const name = document.getElementById('se-name')?.value?.trim() || '站点';
+  paintIcon(preview, {
+    name,
+    url: document.getElementById('se-url')?.value?.trim() || '',
+    color: editor.color,
+    iconType: editor.mode,
+    iconValue: editor.upload,
+  }, { size: 64 });
+}
+
+function fillColors() {
+  const wrap = document.getElementById('se-colors');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  COLORS.forEach((color) => {
+    const btn = document.createElement('button');
+    btn.className = 'swatch' + (color === editor.color ? ' selected' : '');
+    btn.style.background = color;
+    btn.title = color;
+    btn.addEventListener('click', () => {
+      editor.color = color;
+      fillColors();
+      paintPreview();
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+export function openSiteEditor(siteId = null, { pageId = null, folderId = null } = {}) {
+  const site = siteId ? getSite(siteId) : null;
+  editor = {
+    siteId,
+    pageId: pageId || getCurrentPage()?.id || null,
+    folderId,
+    mode: site?.iconType || 'auto',
+    color: site?.color || COLORS[0],
+    upload: site?.iconType === 'upload' ? site.iconValue : '',
+  };
+  document.getElementById('se-title').textContent = site ? '编辑站点' : '新建站点';
+  const urlInput = document.getElementById('se-url');
+  const nameInput = document.getElementById('se-name');
+  urlInput.value = site?.url || '';
+  nameInput.value = site?.name || '';
+  document.getElementById('se-error').textContent = '';
+  document.getElementById('se-upload-name').textContent = editor.upload ? '已选择图片' : '未选择';
+  syncModePanels();
+  fillColors();
+  paintPreview();
+  openModal('site-editor');
+  setTimeout(() => urlInput.focus(), 120);
+}
+
+export async function saveSiteEditor() {
+  const error = document.getElementById('se-error');
+  const check = normalizeUrl(document.getElementById('se-url').value);
+  if (!check.ok) { error.textContent = check.reason; return; }
+  const name = document.getElementById('se-name').value.trim() || hostNameOf(check.url);
+  const patch = {
+    name,
+    url: check.url,
+    color: editor.color,
+    iconType: editor.mode,
+    iconValue: editor.mode === 'upload' ? editor.upload : '',
+  };
+  if (editor.siteId) {
+    await updateSite(editor.siteId, patch);
+  } else {
+    const { site } = await addSite({ ...patch, pageId: editor.pageId });
+    if (editor.folderId) await addSiteToFolder(editor.folderId, site.id);
+    if (editor.folderId) {
+      // 新建后不重复占用主页格子（文件夹内展示）
+      const page = getCurrentPage();
+      page.siteIds = page.siteIds.filter((id) => id !== site.id);
+    }
+  }
+  closeModal('site-editor');
+  renderAll();
+  if (currentFolderId) renderFolderGrid();
+  toast('已保存');
+}
+
+export function initSiteEditor() {
+  document.querySelectorAll('#se-icon-tabs button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      editor.mode = btn.dataset.mode;
+      syncModePanels();
+      paintPreview();
+    });
+  });
+  document.getElementById('se-url')?.addEventListener('input', paintPreview);
+  document.getElementById('se-name')?.addEventListener('input', paintPreview);
+  document.getElementById('se-upload-btn')?.addEventListener('click', () => document.getElementById('se-file')?.click());
+  document.getElementById('se-file')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const raw = await readFileAsDataURL(file);
+    editor.upload = await compressImage(raw, 256, 0.86);
+    document.getElementById('se-upload-name').textContent = file.name;
+    paintPreview();
+  });
+  document.getElementById('se-save')?.addEventListener('click', saveSiteEditor);
+  document.getElementById('se-url')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveSiteEditor(); });
+}
+
+/* ---------------- 文件夹 ---------------- */
+export function openFolder(folderId) {
+  const folder = getFolder(folderId);
+  if (!folder) return;
+  currentFolderId = folderId;
   folderEditMode = false;
-  renderGrid();
+  document.getElementById('folder-title').textContent = folder.name;
+  document.getElementById('folder-edit').textContent = '编辑';
+  document.getElementById('folder-grid').classList.remove('edit-mode');
+  renderFolderGrid();
+  openModal('folder-modal');
 }
 
 function renderFolderGrid() {
   const folder = getFolder(currentFolderId);
+  if (!folder) return;
   const grid = document.getElementById('folder-grid');
-  const empty = document.getElementById('folder-empty-tip');
+  const empty = document.getElementById('folder-empty');
   grid.innerHTML = '';
   const members = folder.iconIds.map(getSite).filter(Boolean);
-  empty.classList.toggle('modal-hidden', members.length > 0);
+  empty?.classList.toggle('hidden', members.length > 0);
   members.forEach((site) => {
-    const card = document.createElement('div');
-    card.className = 'site-card';
-    card.draggable = true;
-    card.dataset.id = site.id;
-    card.innerHTML = `
-      <span class="folder-del-tag">×</span>
-      ${iconInner(site)}
-      <div class="icon-name">${escapeHtml(site.name || '未命名')}</div>`;
-    card.addEventListener('click', () => {
-      if (folderEditMode) return;
-      openSlideEditor(site.id);
+    const el = document.createElement('div');
+    el.className = 'cell site';
+    el.dataset.id = site.id;
+    el.draggable = true;
+    el.tabIndex = 0;
+    const icon = document.createElement('span');
+    icon.className = 'icon';
+    paintIcon(icon, site, { size: 64 });
+    el.appendChild(icon);
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = site.name;
+    el.appendChild(label);
+    el.addEventListener('click', () => openUrl(site.url, { newTab: true }));
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      window.app?.openSiteMenu?.(e, site.id, { folderId: currentFolderId });
     });
-    card.querySelector('.folder-del-tag').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await removeSiteFromFolder(currentFolderId, site.id);
-      toast('已移出文件夹（站点未删除）');
-      renderFolderGrid();
+    el.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', 'folder-item:' + site.id);
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('dragging');
     });
-    card.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', site.id); });
-    grid.appendChild(card);
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    grid.appendChild(el);
   });
-  grid.ondragover = (e) => e.preventDefault();
+
+  grid.ondragover = (e) => { e.preventDefault(); };
   grid.ondrop = async (e) => {
     e.preventDefault();
-    const draggedId = e.dataTransfer.getData('text/plain');
-    const afterEl = e.target.closest('.site-card');
-    const order = [...grid.querySelectorAll('.site-card')].map((n) => n.dataset.id);
-    if (draggedId) {
-      const idx = order.indexOf(draggedId);
-      if (idx >= 0) order.splice(idx, 1);
-      let targetIdx = afterEl ? order.indexOf(afterEl.dataset.id) : order.length;
-      if (targetIdx < 0) targetIdx = order.length;
-      order.splice(targetIdx, 0, draggedId);
-      await reorderFolder(currentFolderId, order);
-      renderFolderGrid();
-    }
+    const raw = e.dataTransfer.getData('text/plain') || '';
+    if (!raw.startsWith('folder-item:')) return;
+    const dragged = raw.slice('folder-item:'.length);
+    const after = e.target.closest('.cell')?.dataset.id;
+    const order = members.map((m) => m.id).filter((id) => id !== dragged);
+    let idx = after ? order.indexOf(after) : order.length;
+    if (idx < 0) idx = order.length;
+    order.splice(idx, 0, dragged);
+    await reorderFolder(currentFolderId, order);
+    renderFolderGrid();
   };
 }
 
 export function initFolderModal() {
-  document.getElementById('folder-close').addEventListener('click', closeFolderModal);
-  document.getElementById('folder-overlay').addEventListener('click', closeFolderModal);
-  document.getElementById('folder-edit-mode-btn').addEventListener('click', () => {
+  document.getElementById('folder-edit')?.addEventListener('click', () => {
     folderEditMode = !folderEditMode;
     document.getElementById('folder-grid').classList.toggle('edit-mode', folderEditMode);
-    document.getElementById('folder-edit-mode-btn').textContent = folderEditMode ? '完成编辑' : '编辑模式';
+    document.getElementById('folder-edit').textContent = folderEditMode ? '完成' : '编辑';
   });
-}
-
-function fillColorRow(containerId, selected, onPick) {
-  const row = document.getElementById(containerId);
-  row.innerHTML = '';
-  PRESET_COLORS.forEach((c) => {
-    const sw = document.createElement('span');
-    sw.className = 'color-swatch' + (c === selected ? ' selected' : '');
-    sw.style.background = c;
-    sw.addEventListener('click', () => {
-      row.querySelectorAll('.color-swatch').forEach((x) => x.classList.remove('selected'));
-      sw.classList.add('selected');
-      onPick(c);
-    });
-    row.appendChild(sw);
-  });
-}
-
-function fillPresetRow(containerId, selected, onPick) {
-  const row = document.getElementById(containerId);
-  row.innerHTML = '';
-  Object.entries(PRESET_ICONS).forEach(([key, ch]) => {
-    const cell = document.createElement('span');
-    cell.className = 'preset-cell' + (key === selected ? ' selected' : '');
-    cell.textContent = ch;
-    cell.title = key;
-    cell.addEventListener('click', () => {
-      row.querySelectorAll('.preset-cell').forEach((x) => x.classList.remove('selected'));
-      cell.classList.add('selected');
-      onPick(key);
-    });
-    row.appendChild(cell);
-  });
-}
-
-let feColor = '#4c8bf5', fePreset = '';
-function openSlideEditor(siteId) {
-  const site = getSite(siteId);
-  if (!site) return;
-  editingSiteId = siteId;
-  document.getElementById('fe-panel-title').textContent = '编辑站点';
-  document.getElementById('fe-url').value = site.url;
-  document.getElementById('fe-name').value = site.name;
-  document.getElementById('fe-error').textContent = '';
-  feColor = site.color || '#4c8bf5';
-  fePreset = site.iconValue || '';
-  fillColorRow('fe-color-row', feColor, (c) => { feColor = c; refreshFePreview(); });
-  fillPresetRow('fe-preset-row', fePreset, (k) => { fePreset = k; refreshFePreview(); });
-  refreshFePreview();
-  document.getElementById('folder-edit-panel').classList.add('open');
-}
-
-function refreshFePreview() {
-  const site = getSite(editingSiteId);
-  if (!site) return;
-  const probe = { ...site, color: feColor, iconType: fePreset ? 'preset' : 'color', iconValue: fePreset };
-  document.getElementById('fe-preview').innerHTML = iconInner(probe);
-}
-
-export function initSlideEditor() {
-  document.getElementById('fe-cancel').addEventListener('click', () => {
-    document.getElementById('folder-edit-panel').classList.remove('open');
-  });
-  document.getElementById('fe-ok').addEventListener('click', async () => {
-    if (!editingSiteId) return;
-    const urlCheck = normalizeUrl(document.getElementById('fe-url').value);
-    if (!urlCheck.ok) { document.getElementById('fe-error').textContent = urlCheck.reason; return; }
-    const name = document.getElementById('fe-name').value.trim() || urlCheck.url;
-    await updateSite(editingSiteId, {
-      url: urlCheck.ok ? urlCheck.url : undefined,
-      name, color: feColor,
-      iconType: fePreset ? 'preset' : 'color', iconValue: fePreset,
-    });
-    document.getElementById('folder-edit-panel').classList.remove('open');
+  document.getElementById('folder-grid')?.addEventListener('click', async (e) => {
+    if (!folderEditMode) return;
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    const siteId = cell.dataset.id;
+    await removeSiteFromFolder(currentFolderId, siteId);
     renderFolderGrid();
     renderGrid();
-    toast('已保存');
+    toast('已移出文件夹，站点仍在');
+  });
+  document.getElementById('folder-add')?.addEventListener('click', () => {
+    openSiteEditor(null, { folderId: currentFolderId });
+  });
+  document.getElementById('folder-open-all')?.addEventListener('click', () => {
+    const folder = getFolder(currentFolderId);
+    if (!folder) return;
+    folder.iconIds.map(getSite).filter(Boolean).forEach((site) => {
+      setTimeout(() => openUrl(site.url, { newTab: true }), 80);
+    });
+    toast(`正在打开 ${folder.iconIds.length} 个站点`);
+  });
+  document.getElementById('folder-delete')?.addEventListener('click', async () => {
+    const folder = getFolder(currentFolderId);
+    if (!folder) return;
+    const ok = await confirmAction(`删除文件夹「${folder.name}」？里面的站点会移回第 1 页，不会删除。`, { okText: '删除' });
+    if (!ok) return;
+    await deleteFolder(folder.id);
+    closeModal('folder-modal');
+    currentFolderId = null;
+    renderAll();
+    toast('文件夹已删除，站点已移回第 1 页');
+  });
+  document.getElementById('folder-title')?.addEventListener('dblclick', async () => {
+    const folder = getFolder(currentFolderId);
+    if (!folder) return;
+    const name = await askText({ title: '重命名文件夹', value: folder.name, okText: '保存' });
+    if (!name) return;
+    await updateFolder(folder.id, { name });
+    document.getElementById('folder-title').textContent = name;
+    renderAll();
   });
 }
 
-let seState = { mode: 'color', color: '#4c8bf5', preset: '', uploadData: '' };
-
-export function openSiteEditor(siteId, { pageId } = {}) {
-  const site = siteId ? getSite(siteId) : null;
-  editingSiteId = siteId || null;
-  document.getElementById('se-title').textContent = site ? '编辑站点' : '新建站点';
-  document.getElementById('se-url').value = site ? site.url : '';
-  document.getElementById('se-name').value = site ? site.name : '';
-  document.getElementById('se-error').textContent = '';
-  seState = {
-    mode: site ? site.iconType : 'color',
-    color: site ? site.color || '#4c8bf5' : '#4c8bf5',
-    preset: site ? site.iconValue || '' : '',
-    uploadData: site && site.iconType === 'upload' ? site.iconValue : '',
-    pageId,
-  };
-  document.querySelector('input[name=se-icon-type][value="' + seState.mode + '"]').checked = true;
-  syncEditorModePanels();
-  fillColorRow('se-color-row', seState.color, (c) => { seState.color = c; refreshSePreview(); });
-  fillPresetRow('se-preset-row', seState.preset, (k) => { seState.preset = k; refreshSePreview(); });
-  refreshSePreview();
-  document.getElementById('site-editor-modal').classList.remove('modal-hidden');
-}
-
-function syncEditorModePanels() {
-  document.getElementById('se-color-row-wrap').classList.toggle('modal-hidden', seState.mode !== 'color');
-  document.getElementById('se-preset-row-wrap').classList.toggle('modal-hidden', seState.mode !== 'preset');
-  document.getElementById('se-upload-row-wrap').classList.toggle('modal-hidden', seState.mode !== 'upload');
-}
-
-function refreshSePreview() {
-  const probe = {
-    name: document.getElementById('se-name').value || '?',
-    url: '', color: seState.color, iconType: seState.mode,
-    iconValue: seState.mode === 'upload' ? seState.uploadData : seState.preset,
-  };
-  document.getElementById('se-preview').innerHTML = iconInner(probe);
-}
-
-export function initSiteEditor() {
-  document.querySelectorAll('input[name=se-icon-type]').forEach((r) => {
-    r.addEventListener('change', () => { seState.mode = r.value; syncEditorModePanels(); refreshSePreview(); });
-  });
-  document.getElementById('se-name').addEventListener('input', refreshSePreview);
-  document.getElementById('se-upload-file').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const raw = await readFileAsDataURL(file);
-    seState.uploadData = await compressImageToDataURL(raw, 640, 0.72);
-    refreshSePreview();
-  });
-  document.getElementById('se-cancel').addEventListener('click', () => {
-    document.getElementById('site-editor-modal').classList.add('modal-hidden');
-  });
-  document.getElementById('se-ok').addEventListener('click', async () => {
-    const urlCheck = normalizeUrl(document.getElementById('se-url').value);
-    if (!urlCheck.ok) { document.getElementById('se-error').textContent = urlCheck.reason; return; }
-    const name = document.getElementById('se-name').value.trim() || urlCheck.url;
-    if (editingSiteId) {
-      await updateSite(editingSiteId, {
-        url: urlCheck.url, name, color: seState.color,
-        iconType: seState.mode, iconValue: seState.mode === 'upload' ? seState.uploadData : seState.preset,
-      });
-    } else {
-      const { addSite, getCurrentPage } = await import('./store.js');
-      await addSite({
-        url: urlCheck.url, name, color: seState.color,
-        iconType: seState.mode, iconValue: seState.mode === 'upload' ? seState.uploadData : seState.preset,
-        pageId: seState.pageId || getCurrentPage().id,
-      });
-    }
-    document.getElementById('site-editor-modal').classList.add('modal-hidden');
-    renderGrid();
-    toast('已保存');
-  });
+export function closeFolder() {
+  closeModal('folder-modal');
+  currentFolderId = null;
+  renderAll();
 }
 
 export async function renameFolder(folderId) {
   const folder = getFolder(folderId);
   if (!folder) return;
-  const name = window.prompt('文件夹名称', folder.name);
-  if (name === null) return;
-  await updateFolder(folderId, { name: name.trim() || folder.name });
+  const name = await askText({ title: '重命名文件夹', value: folder.name, okText: '保存' });
+  if (!name) return;
+  await updateFolder(folderId, { name });
   renderAll();
   toast('已重命名');
 }
 
-export async function openAllFolderSites(folderId) {
+export async function openAllFolder(folderId) {
   const folder = getFolder(folderId);
   if (!folder) return;
-  const members = folder.iconIds.map(getSite).filter((s) => s.url);
-  members.forEach((s, i) => setTimeout(() => openUrl(s.url, { background: true }), i * 60));
-  toast(`正在打开 ${members.length} 个站点`);
+  const sites = folder.iconIds.map(getSite).filter(Boolean);
+  sites.forEach((site, i) => setTimeout(() => openUrl(site.url, { newTab: true }), i * 80));
+  toast(`正在打开 ${sites.length} 个站点`);
 }
 
 export async function removeFolder(folderId) {
   const folder = getFolder(folderId);
   if (!folder) return;
-  const ok = await window.__confirm(`确认删除文件夹「${folder.name}」？仅删除收纳关系，站点本体保留。`);
+  const ok = await confirmAction(`删除文件夹「${folder.name}」？里面的站点会移回第 1 页，不会删除。`, { okText: '删除' });
   if (!ok) return;
-  getState().pages.forEach((p) => { p.siteIds = p.siteIds.filter((x) => x !== folderId); });
-  await Promise.all(getState().pages.map((p) => db.put('pages', p)));
   await deleteFolder(folderId);
   renderAll();
-  toast('文件夹已删除，站点保留');
+  toast('文件夹已删除，站点已移回第 1 页');
 }
 
-export async function createFolderFromSite(siteId) {
-  const name = window.prompt('新建文件夹名称', '新文件夹');
-  if (name === null) return null;
-  const folder = await addFolder(name.trim() || '新文件夹', [siteId]);
-  const page = getCurrentPage();
-  if (!page.siteIds.includes(folder.id)) page.siteIds.push(folder.id);
-  await db.put('pages', page);
-  renderAll();
-  toast('已新建文件夹并收纳该站点');
-  return folder;
-}
+export { currentFolderId };

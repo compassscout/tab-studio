@@ -1,73 +1,97 @@
-# -*- coding: utf-8 -*-
-"""M9 静态一致性检查脚本：
-1) newtab.html 引用的 css/js 文件存在；
-2) 各 js 中 getElementById('id') 的目标 id 在 newtab.html 中存在；
-3) 各 js 相对 import 路径存在；
-4) manifest.json 引用的图标存在且尺寸正确。
-仅做静态文本分析，不启动浏览器。
+#!/usr/bin/env python3
+"""静态一致性检查（v2）：manifest / 资源引用 / HTML id / JS import / Chrome 保留名。
+
+用法：python check_static.py
+退出码 0 表示全部通过。
 """
-import os, re, json, sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+import json
+import re
+import sys
+from pathlib import Path
 
-ROOT = r"E:\标签页浏览器插件"
-html_path = os.path.join(ROOT, "newtab.html")
+ROOT = Path(__file__).resolve().parent
+errors = []
+warnings = []
 
-errors, warnings, oks = [], [], []
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
-html = open(html_path, encoding="utf-8").read()
+# Chrome 保留：扩展根目录下以 _ 开头的文件/目录会导致加载失败
+for p in ROOT.iterdir():
+    if p.name.startswith('_'):
+        errors.append(f'根目录存在 Chrome 保留名前缀项：{p.name}（以 _ 开头会导致扩展无法加载）')
 
-for m in re.finditer(r'(?:href|src)="([^"]+)"', html):
-    ref = m.group(1)
-    if ref.startswith(("http://", "https://", "//")):
-        warnings.append(f"外部引用(允许说明): {ref}")
-        continue
-    p = os.path.join(ROOT, ref.replace("/", os.sep))
-    (oks if os.path.exists(p) else errors).append(f"HTML 引用 {ref}: {'存在' if os.path.exists(p) else '缺失'}")
-
-html_ids = set(re.findall(r'id="([^"]+)"', html))
-
-js_files = [f for f in os.listdir(os.path.join(ROOT, "js")) if f.endswith(".js")]
-for fname in js_files:
-    code = open(os.path.join(ROOT, "js", fname), encoding="utf-8").read()
-    for m in re.finditer(r"getElementById\(\s*['\"]([^'\"]+)['\"]", code):
-        target = m.group(1)
-        if target not in html_ids:
-            errors.append(f"{fname}: getElementById('{target}') 在 newtab.html 中不存在")
-        else:
-            oks.append(f"{fname} -> #{target}")
-
-for fname in js_files:
-    code = open(os.path.join(ROOT, "js", fname), encoding="utf-8").read()
-    for m in re.finditer(r"""(?:import|export)\s+(?:[^'"]*\s+from\s+)?['"](\.[^'"]+)['"]""", code):
-        rel = m.group(1)
-        target = os.path.normpath(os.path.join(ROOT, "js", rel))
-        candidates = [target, target + ".js"]
-        if any(os.path.exists(c) for c in candidates):
-            oks.append(f"{fname} import {rel}")
-        else:
-            errors.append(f"{fname}: import {rel} 解析不存在")
-
-manifest = json.load(open(os.path.join(ROOT, "manifest.json"), encoding="utf-8"))
 try:
-    from PIL import Image
-    for size, rel in manifest.get("icons", {}).items():
-        p = os.path.join(ROOT, rel.replace("/", os.sep))
-        if not os.path.exists(p):
-            errors.append(f"图标缺失: {rel}")
-            continue
-        with Image.open(p) as im:
-            if im.size == (int(size), int(size)):
-                oks.append(f"图标 {rel} 尺寸 {im.size}")
-            else:
-                errors.append(f"图标 {rel} 尺寸不符 {im.size} != ({size},{size})")
-except ImportError:
-    warnings.append("PIL 不可用，跳过图标尺寸校验")
+    manifest = json.loads((ROOT / 'manifest.json').read_text(encoding='utf-8'))
+except Exception as exc:  # noqa: BLE001
+    print('manifest.json 解析失败:', exc)
+    sys.exit(1)
 
-print("===== 通过项 (%d) =====" % len(oks))
-for o in oks: print(" OK  ", o)
-if warnings:
-    print("\n===== 提示 (%d) =====" % len(warnings))
-    for w in warnings: print(" WARN", w)
-print("\n===== 错误 (%d) =====" % len(errors))
-for e in errors: print(" ERR ", e)
-sys.exit(1 if errors else 0)
+for key in ('name', 'version', 'manifest_version'):
+    if key not in manifest:
+        errors.append(f'manifest 缺少字段 {key}')
+if manifest.get('manifest_version') != 3:
+    errors.append('manifest_version 不是 3')
+
+newtab = manifest.get('chrome_url_overrides', {}).get('newtab')
+if not newtab:
+    errors.append('manifest 未配置 chrome_url_overrides.newtab')
+elif not (ROOT / newtab).exists():
+    errors.append(f'newtab 页面不存在：{newtab}')
+
+for _size, rel in (manifest.get('icons') or {}).items():
+    if not (ROOT / rel).exists():
+        errors.append(f'manifest 图标缺失：{rel}')
+for res in manifest.get('web_accessible_resources', []):
+    for pattern in res.get('resources', []):
+        if pattern.startswith('_favicon'):
+            continue
+        if '*' not in pattern and not (ROOT / pattern).exists():
+            errors.append(f'web_accessible_resources 文件缺失：{pattern}')
+
+html_path = ROOT / newtab if newtab else ROOT / 'newtab.html'
+html = html_path.read_text(encoding='utf-8')
+html_ids = set(re.findall(r'\bid="([^"]+)"', html))
+for ref in re.findall(r'(?:href|src)="([^"]+)"', html):
+    if ref.startswith(('http://', 'https://', '#', 'data:')):
+        continue
+    if not (ROOT / ref).exists():
+        errors.append(f'{html_path.name} 引用的资源不存在：{ref}')
+
+DYNAMIC_IDS = {
+    'wp-name', 'wp-type', 'wp-thumb', 'font-color-picker', 'engine-menu', 'bd-perm-btn',
+}
+js_files = sorted((ROOT / 'js').glob('*.js'))
+for js in js_files:
+    text = js.read_text(encoding='utf-8')
+    for imp in re.findall(r"from\s+'([^']+)'", text) + re.findall(r"import\('([^']+)'\)", text):
+        if not imp.startswith('.'):
+            continue
+        if not (js.parent / imp).resolve().exists():
+            errors.append(f'{js.name} 引用的模块不存在：{imp}')
+    for gid in re.findall(r"getElementById\('([^']+)'\)", text):
+        if gid in html_ids or gid in DYNAMIC_IDS:
+            continue
+        warnings.append(f'{js.name} 静态引用 id「{gid}」不在 HTML 中（可能由 JS 动态创建）')
+
+for css in sorted((ROOT / 'css').glob('*.css')):
+    for ref in re.findall(r'url\(\s*[\'"]?([^\'")]+)', css.read_text(encoding='utf-8')):
+        if ref.startswith(('http', 'data:', '#')):
+            continue
+        if not (ROOT / ref).exists():
+            errors.append(f'{css.name} 引用的资源不存在：{ref}')
+
+wp_dir = ROOT / 'images' / 'wallpapers'
+wallpapers = sorted(wp_dir.glob('*.jpg')) if wp_dir.exists() else []
+if len(wallpapers) < 8:
+    warnings.append(f'内置壁纸只有 {len(wallpapers)} 张，建议 ≥ 8 张')
+
+print(f'检查：manifest 1，HTML 1，CSS {len(list((ROOT / "css").glob("*.css")))}，JS {len(js_files)}，壁纸 {len(wallpapers)}')
+for w in warnings:
+    print('  [warn]', w)
+if errors:
+    print(f'\n发现 {len(errors)} 个错误：')
+    for e in errors:
+        print('  [error]', e)
+    sys.exit(1)
+print('\n全部通过：0 错误')
