@@ -1,0 +1,34 @@
+/* settings.css — 设置面板：模式切换、分组、滑块、色板、布局选项 */
+
+#settings-header { display: flex; align-items: center; justify-content: space-between; max-width: 720px; margin-bottom: 16px; }
+#settings-title { font-size: 17px; font-weight: 600; color: var(--c-text-primary); text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+#mode-toggle { display: flex; background: rgba(255,255,255,0.9); border-radius: var(--radius-pill); padding: 3px; }
+#mode-toggle button { padding: 6px 16px; font-size: 12px; border-radius: var(--radius-pill); color: var(--c-text-on-light); }
+#mode-toggle button.active { background: var(--c-accent); color: var(--c-on-accent); }
+
+.settings-group h3 { margin: 0 0 12px; font-size: 14px; color: var(--c-text-on-light); }
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 13px; color: var(--c-text-on-light); gap: 14px; }
+.setting-row .row-label { flex-shrink: 0; }
+.setting-row .row-control { display: flex; align-items: center; gap: 8px; }
+.setting-row input[type=range] { width: 140px; }
+.range-value { font-size: 12px; color: var(--c-text-muted); width: 44px; text-align: right; }
+#cfg-rotate-interval { height: 28px; border-radius: var(--radius-sm); border: 1px solid var(--c-border); padding: 0 8px; font-size: 12px; background: var(--c-panel-bg); }
+
+#wp-thumb { width: 90px; height: 56px; border-radius: var(--radius-sm); background-size: cover; background-position: center; }
+
+.layout-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.layout-chip {
+  padding: 6px 12px; border: 1px solid var(--c-border); border-radius: var(--radius-sm);
+  font-size: 12px; color: var(--c-text-on-light); background: var(--c-panel-bg);
+}
+.layout-chip.active { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-accent-weak); }
+
+.font-colors { display: flex; flex-wrap: wrap; gap: 8px; }
+.font-color-swatch { width: 24px; height: 24px; border-radius: var(--radius-pill); border: 2px solid transparent; cursor: pointer; }
+.font-color-swatch.selected { border-color: var(--c-accent); }
+#custom-font-color { width: 28px; height: 24px; border: none; cursor: pointer; background: none; }
+
+.anim-options { display: flex; gap: 8px; }
+
+body.minimal-mode .settings-group:not(#group-searchbox) { display: none; }
+body.minimal-mode #settings-title::after { content: "（极简模式）"; font-size: 12px; color: var(--c-text-muted); margin-left: 8px; }

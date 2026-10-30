@@ -1,0 +1,80 @@
+/* ============================================================
+ * variables.css — 全部色值 / 圆角 / 间距 / 时长 / 阴影 统一定义
+ * 禁止在其它 CSS 中硬编码色值与动画时长；运行期由 config.js 通过
+ * document.documentElement.style.setProperty 覆盖本文件变量。
+ * ============================================================ */
+
+:root {
+  /* ---------- 基础色板 ---------- */
+  --c-bg-overlay: rgba(0, 0, 0, 0.4);
+  --c-panel-bg: #ffffff;
+  --c-panel-bg-soft: #f5f6f8;
+  --c-text-primary: #ffffff;
+  --c-text-on-light: #333333;
+  --c-text-muted: #8a8f99;
+  --c-border: #e6e8ec;
+  --c-accent: #2d6bfe;
+  --c-accent-weak: rgba(45, 107, 254, 0.12);
+  --c-danger: #ff4e50;
+  --c-danger-weak: rgba(255, 78, 80, 0.12);
+  --c-star: #ffb400;
+  --c-on-accent: #ffffff;
+  --c-switch-off: #cfd3d9;
+  --c-neutral-placeholder: #cccccc;
+  --c-body-fallback: #2b2f38;
+  --c-sidebar-bg: rgba(255, 255, 255, 0.92);
+  --c-sidebar-text: #44484f;
+  --c-menu-bg: #ffffff;
+  --menu-text: #333333;
+
+  --sidebar-width: 72px;
+  --sidebar-width-open: 220px;
+  --top-search-margin-top: 56px;
+  --icon-box-width: 108px;
+  --icon-box-height: 108px;
+  --icon-padding-top: 18px;
+  --main-gap-x: 24px;
+  --main-gap-y: 20px;
+  --page-dot-size: 8px;
+  --page-dot-gap: 10px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  --mask-alpha: 0.4;
+  --wallpaper-blur: 0px;
+  --icon-radius: 10px;
+  --icon-opacity: 1;
+  --icon-size: 64px;
+  --icon-font-size: 13px;
+  --icon-font-color: #ffffff;
+  --search-radius: 8px;
+  --search-opacity: 1;
+  --search-scale: 1;
+  --body-zoom: 1;
+  --sidebar-scale: 1;
+  --grid-cols: 5;
+  --grid-rows: 4;
+
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.14);
+  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.18);
+  --shadow-menu: 0 2px 16px rgba(0, 0, 0, 0.14);
+  --shadow-icon: 1px 1px 5px rgba(0, 0, 0, 0.2);
+
+  --dur-fast: 150ms;
+  --dur-normal: 300ms;
+  --dur-slow: 500ms;
+  --ease-standard: ease;
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-fade: ease-in-out;
+
+  --preset-c-1: #4c8bf5;
+  --preset-c-2: #ff6b6b;
+  --preset-c-3: #f5a623;
+  --preset-c-4: #34c759;
+  --preset-c-5: #9b59b6;
+  --preset-c-6: #16a085;
+  --preset-c-7: #e67e22;
+  --preset-c-8: #5b8def;
+}
