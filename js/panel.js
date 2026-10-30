@@ -2,13 +2,14 @@
 import { getState, addSite, exportAll, importAll, getCurrentPage, addWallpaper } from './store.js';
 import { loadConfig, saveConfig, applyConfig, loadMeta, saveMeta } from './config.js';
 import { CATEGORIES, PRESET_SITES, presetsByCategory } from './presets.js';
-import { paintIcon } from './favicon.js';
+import { paintIcon, clearIconCache } from './favicon.js';
 import { normalizeUrl, hostNameOf, toast, downloadFile, todayISO, nowISO, debounce, hasTabs, escapeHtml } from './utils.js';
 import { renderAll } from './render.js';
 import { initSettings, refreshSettingsUI } from './settings.js';
 import { confirmAction } from './dialog.js';
 import { openHistory, openBookmarks } from './browserdata.js';
 import { refreshThumb, seedWallpapers, randomNext } from './wallpaper.js';
+import { latestBackupTime, restoreLatestBackup } from './db.js';
 
 let addCategory = 'popular';
 let addKeyword = '';
@@ -94,7 +95,21 @@ function renderAddList() {
 }
 
 async function addCurrentPage() {
-  if (!hasTabs()) { toast('请在扩展环境中使用'); return; }
+  if (!hasTabs()) {
+    /* 网页版降级：把当前窗口地址当作「当前页」收藏 */
+    const url = location.href;
+    if (!/^https?:\/\//i.test(url)) { toast('当前页面无法添加'); return; }
+    const result = await addSite({
+      name: document.title || hostNameOf(url),
+      url,
+      color: '#4c8bf5',
+      pageId: getCurrentPage().id,
+    });
+    renderAll();
+    toast(`已添加「${document.title || hostNameOf(url)}」`);
+    if (result.moved) toast('当前页已满，已放到下一页');
+    return;
+  }
   try {
     const tabs = await new Promise((resolve, reject) => {
       chrome.tabs.query({}, (list) => {
@@ -292,6 +307,21 @@ export function initPanel() {
     if (file) doImport(file);
   });
   document.getElementById('repair-btn')?.addEventListener('click', doRepair);
+  document.getElementById('icon-cache-btn')?.addEventListener('click', async () => {
+    await clearIconCache();
+    renderAll();
+    toast('图标缓存已清空，将重新获取');
+  });
+
+  document.getElementById('restore-backup-btn')?.addEventListener('click', async () => {
+    const ts = latestBackupTime();
+    if (!ts) { toast('还没有自动备份（每天首次打开时生成一份）'); return; }
+    const when = new Date(ts).toLocaleString();
+    const ok = await confirmAction(`将用 ${when} 的快照覆盖当前的站点、文件夹、分页与待办。壁纸和设置不受影响。`, { okText: '恢复' });
+    if (!ok) return;
+    await restoreLatestBackup();
+    location.reload();
+  });
   document.getElementById('about-btn')?.addEventListener('click', () => {
     toast('快捷键：Ctrl/⌘+T 新标签页 · 输入即搜索 · Enter 打开');
   });

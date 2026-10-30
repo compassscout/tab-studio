@@ -121,6 +121,12 @@ button, input, textarea { border: 0; outline: 0; background: none; color: inheri
   backdrop-filter: blur(6px);
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
+#toast.has-action { pointer-events: auto; }
+.toast-action {
+  margin-left: 10px; padding: 0; border: 0; background: none;
+  color: #8ab8ff; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.toast-action:hover { color: #b9d4ff; }
 
 /* ---------- 滚动条 ---------- */
 ::-webkit-scrollbar { width: 9px; height: 9px; }

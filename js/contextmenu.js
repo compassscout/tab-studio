@@ -1,9 +1,9 @@
 /* contextmenu.js — 自定义右键菜单：站点 / 文件夹 / 分页 */
-import { getState, getSite, getFolder, moveItemToPage, deleteSite, addFolder, detachItemFromPages, deletePage, renamePage, addPage, setCurrentPage } from './store.js';
+import { getState, getSite, getFolder, moveItemToPage, deleteSite, addFolder, detachItemFromPages, deletePage, renamePage, addPage, setCurrentPage, snapshotSiteLinks, undoDeleteSite } from './store.js';
 import { openSiteEditor, renameFolder, openAllFolder, removeFolder, openFolder } from './folder.js';
 import { renderAll } from './render.js';
 import { confirmAction, askText } from './dialog.js';
-import { openUrl, toast } from './utils.js';
+import { openUrl, toast, toastAction } from './utils.js';
 
 const menu = document.getElementById('ctx-menu');
 
@@ -89,9 +89,14 @@ export function openSiteMenu(e, siteId, { folderId = null } = {}) {
   item('删除', async () => {
     const ok = await confirmAction(`删除「${site.name}」？会从所有分页和文件夹中移除。`, { okText: '删除' });
     if (!ok) return;
+    const snapshot = snapshotSiteLinks();
     await deleteSite(siteId);
     renderAll();
-    toast('站点已删除');
+    toastAction('站点已删除', '撤销', async () => {
+      await undoDeleteSite(site, snapshot);
+      renderAll();
+      toast('已恢复');
+    });
   }, { danger: true });
   place(e.clientX, e.clientY);
 }

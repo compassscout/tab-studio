@@ -73,10 +73,30 @@ let toastTimer = null;
 export function toast(message, duration = 1900) {
   const el = document.getElementById('toast');
   if (!el) return;
+  el.classList.remove('has-action');
   el.textContent = message;
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+/** 带操作按钮的提示（如“撤销删除”），按钮点击后立即收起 */
+export function toastAction(message, label, onAction, duration = 5000) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = message;
+  const btn = document.createElement('button');
+  btn.className = 'toast-action';
+  btn.type = 'button';
+  btn.textContent = label;
+  btn.addEventListener('click', () => {
+    el.classList.remove('show', 'has-action');
+    onAction?.();
+  });
+  el.appendChild(btn);
+  el.classList.add('has-action', 'show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show', 'has-action'), duration);
 }
 
 export function downloadFile(filename, content, mime = 'application/json') {

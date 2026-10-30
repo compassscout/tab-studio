@@ -4,7 +4,7 @@ import { uid } from './utils.js';
 import { loadConfig, saveConfig, loadMeta, saveMeta, currentLayout } from './config.js';
 import { DEFAULT_SITES } from './presets.js';
 
-export const WIDGET_IDS = ['widget-weather', 'widget-todo', 'widget-note', 'widget-folder', 'widget-settings'];
+export const WIDGET_IDS = ['widget-weather', 'widget-todo', 'widget-note', 'widget-folder', 'widget-walls', 'widget-settings'];
 
 const state = {
   sites: [], folders: [], pages: [], wallpapers: [], todos: [],
@@ -214,12 +214,29 @@ export async function addSite(data) {
   return { site, pageId: targetId, moved: targetId !== startPage };
 }
 
+/** 记录一次打开，用于「按使用频率排序」 */
+export function recordVisit(id) {
+  const site = getSite(id);
+  if (!site) return;
+  site.clicks = Number(site.clicks || 0) + 1;
+  site.lastOpenedAt = Date.now();
+  db.put('sites', site).catch(() => {});
+}
+
 export async function updateSite(id, patch) {
   const site = getSite(id);
   if (!site) return null;
   Object.assign(site, patch);
   await db.put('sites', site);
   return site;
+}
+
+/** 其他新标签页改库后重新读取，保留当前浏览的分页 */
+export async function reloadFromDB() {
+  await hydrate();
+  if (!state.pages.some((p) => p.id === state.currentPageId)) {
+    state.currentPageId = state.pages[0]?.id || null;
+  }
 }
 
 export async function deleteSite(id) {
@@ -230,6 +247,35 @@ export async function deleteSite(id) {
   await db.delete('sites', id);
   await Promise.all(state.pages.map((p) => db.put('pages', p)));
   await Promise.all(state.folders.map((f) => db.put('folders', f)));
+}
+
+/** 删除前记录归属关系，供撤销使用 */
+export function snapshotSiteLinks() {
+  return {
+    pages: state.pages.map((p) => ({ id: p.id, siteIds: [...p.siteIds] })),
+    folders: state.folders.map((f) => ({ id: f.id, iconIds: [...f.iconIds] })),
+  };
+}
+
+/** 撤销删除站点：恢复站点本体及其分页 / 文件夹归属 */
+export async function undoDeleteSite(site, snapshot) {
+  if (!site) return false;
+  await db.put('sites', site);
+  if (!getSite(site.id)) state.sites.push(site);
+  for (const p of snapshot.pages) {
+    const page = getPage(p.id);
+    if (!page) continue;
+    page.siteIds = [...p.siteIds];
+    await db.put('pages', page);
+  }
+  for (const f of snapshot.folders) {
+    const folder = getFolder(f.id);
+    if (!folder) continue;
+    folder.iconIds = [...f.iconIds];
+    await db.put('folders', folder);
+  }
+  await reflowPages();
+  return true;
 }
 
 /** 把条目从所有分页里移除（用于收纳进文件夹，站点本体保留） */
@@ -279,6 +325,8 @@ export async function deletePage(id) {
   await db.put('pages', target);
   await db.delete('pages', id);
   if (state.currentPageId === id) state.currentPageId = target.id;
+  /* 合并后第 1 页可能超容量，重排到后续分页 */
+  await reflowPages();
 }
 
 export async function renamePage(id, name) {
@@ -393,7 +441,8 @@ export async function deleteFolder(id) {
   });
   await db.delete('folders', id);
   await Promise.all(state.pages.map((p) => db.put('pages', p)));
-  saveMeta({});
+  /* 成员站点回填第 1 页后可能超容量，重排到后续分页 */
+  await reflowPages();
 }
 
 export async function addSiteToFolder(folderId, siteId) {
@@ -413,6 +462,7 @@ export async function removeSiteFromFolder(folderId, siteId) {
   if (getSite(siteId) && !state.pages.some((p) => p.siteIds.includes(siteId))) {
     first.siteIds.push(siteId);
     await db.put('pages', first);
+    await reflowPages();
   }
 }
 

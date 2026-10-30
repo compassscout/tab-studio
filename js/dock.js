@@ -8,6 +8,21 @@ import { openUrl, toast, firstChar } from './utils.js';
 let dragPayload = null;
 let dropHandled = false;
 
+/* 默认 Dock：小组件常驻，后面接常用站点（只补一次，之后完全以用户排序为准） */
+const DEFAULT_WIDGET_IDS = ['widget-settings', 'widget-folder', 'widget-todo', 'widget-weather', 'widget-note', 'widget-walls'];
+
+function seedDock() {
+  const cfg = config();
+  if (cfg.dockSeedV2) return;
+  const current = Array.isArray(cfg.dockIds)
+    ? cfg.dockIds
+    : getState().sites.slice(0, 4).map((s) => s.id);
+  const merged = [];
+  DEFAULT_WIDGET_IDS.forEach((id) => { if (!merged.includes(id) && widgetOf(id)) merged.push(id); });
+  current.forEach((id) => { if (!merged.includes(id)) merged.push(id); });
+  saveConfig({ dockIds: merged.slice(0, 20), dockSeedV2: true }, { silent: true });
+}
+
 function widgetOf(id) { return WIDGETS.find((w) => 'widget-' + w.key === id) || null; }
 
 function config() { return loadConfig(); }
@@ -16,6 +31,19 @@ function ids() {
   return Array.isArray(list) ? list : [];
 }
 function has(id) { return ids().includes(id); }
+
+/* 图标数量多或窗口变窄时等比缩小图标，保证 Dock 单行完整显示（只影响 Dock 自身） */
+function fitDock() {
+  const n = Math.max(ids().length, 1);
+  const base = config().dockSize;
+  const scale = Math.max(0.7, Math.min(1.5, config().dockScale || 1));
+  const gap = 8;
+  const chrome = 48 + 26; /* 视口左右留白 + Dock 内边距 */
+  /* 按整体缩放折算可用宽度，避免缩放后整条 Dock 超出视口 */
+  const fit = Math.floor(((window.innerWidth - chrome) / scale - gap * (n - 1)) / n);
+  const size = Math.max(28, Math.min(base, fit));
+  document.documentElement.style.setProperty('--dock-i', size + 'px');
+}
 
 function setIds(next) {
   saveConfig({ dockIds: next });
@@ -58,8 +86,11 @@ function folderIcon(folder, size) {
         const img = document.createElement('img');
         img.src = src;
         img.alt = '';
+        img.addEventListener('error', () => { img.remove(); mini.textContent = firstChar(site.name); }, { once: true });
         mini.appendChild(img);
-      } else { mini.textContent = firstChar(site.name); }
+      } else {
+        mini.textContent = firstChar(site.name);
+      }
     }
     el.appendChild(mini);
   });
@@ -95,16 +126,24 @@ function dockItem(id) {
   el.appendChild(icon);
   el.appendChild(label);
 
-  el.addEventListener('click', () => {
-    if (site) openUrl(site.url, { newTab: loadConfig().openSiteNewTab });
+  el.addEventListener('click', (e) => {
+    const cfg = loadConfig();
+    if (site) openUrl(site.url, { newTab: cfg.openSiteNewTab || e.ctrlKey || e.metaKey });
     else if (folder) window.app?.openFolder?.(folder.id);
     else {
       const action = {
         weather: 'openWeather', todo: 'openTodo', note: 'openNote',
-        folder: 'openFolders', settings: 'openSettings',
+        folder: 'openFolders', settings: 'openSettings', walls: 'openWallpaperLibrary',
       }[widget.key];
       window.app?.[action]?.();
     }
+  });
+  /* 中键在新标签页打开 */
+  el.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
+  el.addEventListener('auxclick', (e) => {
+    if (e.button !== 1 || !site) return;
+    e.preventDefault();
+    openUrl(site.url, { newTab: true });
   });
   el.addEventListener('contextmenu', (e) => {
     e.preventDefault();
@@ -134,8 +173,14 @@ export function renderDock() {
   const dock = document.getElementById('dock');
   if (!dock) return;
   const cfg = config();
-  if (!cfg.showDock) { dock.classList.add('hidden'); return; }
+  fitDock();
+  if (!cfg.showDock) {
+    dock.classList.add('hidden');
+    document.body.classList.remove('has-dock');
+    return;
+  }
   dock.classList.remove('hidden');
+  document.body.classList.add('has-dock');
   const list = ids();
   dock.innerHTML = '';
   if (!list.length) {
@@ -223,13 +268,16 @@ export function initDock() {
   document.addEventListener('configchange', (e) => {
     const d = e.detail || {};
     if ('showDock' in d || 'dockIds' in d) renderDock();
+    if ('dockSize' in d || 'dockScale' in d) fitDock();
+  });
+  let resizeRaf = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(fitDock);
   });
 
-  /* 首次：给 Dock 预置 4 个站点 */
-  if (!Array.isArray(config().dockIds)) {
-    const first = getState().sites.slice(0, 4).map((s) => s.id);
-    saveConfig({ dockIds: first }, { silent: true });
-  }
+  /* 首次/升级：把小组件写进 Dock 默认项目，站点按原来的顺序跟在后面 */
+  seedDock();
   renderDock();
 }
 
@@ -254,7 +302,7 @@ export function dockMenu(e, id) {
     else {
       const action = {
         weather: 'openWeather', todo: 'openTodo', note: 'openNote',
-        folder: 'openFolders', settings: 'openSettings',
+        folder: 'openFolders', settings: 'openSettings', walls: 'openWallpaperLibrary',
       }[widget?.key];
       window.app?.[action]?.();
     }

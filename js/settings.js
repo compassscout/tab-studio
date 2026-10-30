@@ -16,11 +16,14 @@ const RANGE_SPECS = {
   iconRadius: { label: '图标圆角', min: 0, max: 50, step: 1, unit: '%' },
   iconOpacity: { label: '图标不透明度', min: 0.2, max: 1, step: 0.05, unit: '%', percent: true },
   iconScale: { label: '图标大小', min: 0.7, max: 1.25, step: 0.05, unit: '%', percent: true },
+  gridOffset: { label: '图标整体上下位置', min: -160, max: 120, step: 4, unit: 'px' },
   fontSize: { label: '字体大小', min: 11, max: 18, step: 1, unit: 'px' },
   searchScale: { label: '搜索框大小', min: 0.7, max: 1.3, step: 0.05, unit: '%', percent: true },
   searchRadius: { label: '搜索框圆角', min: 0, max: 30, step: 1, unit: 'px' },
   searchOpacity: { label: '搜索框不透明度', min: 0.3, max: 1, step: 0.05, unit: '%', percent: true },
-  dockSize: { label: 'Dock 图标大小', min: 36, max: 64, step: 2, unit: 'px' },
+  dockSize: { label: 'Dock 图标大小', min: 32, max: 76, step: 2, unit: 'px' },
+  dockScale: { label: 'Dock 整体缩放', min: 0.7, max: 1.5, step: 0.05, unit: '%', percent: true },
+  dockOffset: { label: 'Dock 距底部', min: 0, max: 100, step: 2, unit: 'px' },
 };
 
 const FONT_COLORS = ['rgb(255, 255, 255)', 'rgb(221, 221, 221)', 'rgb(255, 214, 10)', 'rgb(255, 149, 0)',
@@ -169,6 +172,15 @@ function build() {
     body.appendChild(row('显示 Dock', makeSwitch('showDock')));
     body.appendChild(row('悬停放大', makeSwitch('dockMagnify')));
     body.appendChild(row('图标大小', makeRange('dockSize').wrap));
+    body.appendChild(row('整体缩放', makeRange('dockScale').wrap));
+    body.appendChild(row('距底部高度', makeRange('dockOffset').wrap));
+    const alignSel = el('select');
+    [['center', '居中'], ['left', '靠左'], ['right', '靠右']].forEach(([v, l]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = l; alignSel.appendChild(o);
+    });
+    alignSel.dataset.key = 'dockAlign';
+    alignSel.addEventListener('change', () => saveConfig({ dockAlign: alignSel.value }));
+    body.appendChild(row('水平位置', alignSel));
     body.appendChild(row('提示', el('span', 'hint', '把网格图标拖到底部即可固定；右键 Dock 图标可移除'), ''));
   }
 
@@ -202,9 +214,11 @@ function build() {
     body.appendChild(row('隐藏图标名称', makeSwitch('hideIconName')));
     body.appendChild(row('图标阴影', makeSwitch('iconShadow')));
     body.appendChild(row('启动动画', makeSwitch('startAnimation')));
+    body.appendChild(row('按使用频率排序', makeSwitch('sortByFrequency')));
     body.appendChild(row('图标圆角', makeRange('iconRadius').wrap));
     body.appendChild(row('图标不透明度', makeRange('iconOpacity').wrap));
     body.appendChild(row('图标大小', makeRange('iconScale').wrap));
+    body.appendChild(row('图标整体上下位置', makeRange('gridOffset').wrap));
   }
 
   /* 搜索 */

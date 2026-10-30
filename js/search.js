@@ -1,6 +1,7 @@
 /* search.js — 搜索引擎 / 类别 / 搜索建议 / 回车搜索 */
 import { loadConfig, saveConfig, loadMeta, saveMeta } from './config.js';
 import { openUrl, debounce, escapeHtml } from './utils.js';
+import { getState } from './store.js';
 
 export const ENGINES = {
   baidu: {
@@ -78,6 +79,7 @@ export function allEngines() {
 
 let suggestItems = [];
 let suggestIndex = -1;
+let suggestLocal = false;
 let suggestTimer = null;
 
 function engineMenu() {
@@ -140,7 +142,9 @@ export function doSearch(query) {
   const cfg = loadConfig();
   const engine = allEngines()[cfg.searchEngine] || ENGINES.baidu;
   const base = engine.urls[cfg.searchCategory] || engine.urls.web;
-  const url = base + encodeURIComponent(q);
+  const encoded = encodeURIComponent(q);
+  /* 自定义引擎允许 %s 出现在地址中间，不能一律拼在末尾 */
+  const url = base.includes('%s') ? base.replace('%s', encoded) : base + encoded;
   openUrl(url, { newTab: cfg.openSearchNewTab });
   if (!cfg.keepSearchInput) {
     const input = document.getElementById('search-input');
@@ -160,12 +164,13 @@ function hideSuggest() {
   if (list) list.classList.add('hidden');
   suggestItems = [];
   suggestIndex = -1;
+  suggestLocal = false;
 }
 
 function renderSuggest() {
   const list = document.getElementById('suggest-list');
   if (!list) return;
-  if (!suggestItems.length) { list.classList.add('hidden'); return; }
+  if (!suggestItems.length && !suggestLocal) { list.classList.add('hidden'); return; }
   list.innerHTML = '';
   suggestItems.forEach((text, i) => {
     const btn = document.createElement('button');
@@ -177,7 +182,28 @@ function renderSuggest() {
     });
     list.appendChild(btn);
   });
+  if (suggestLocal) {
+    const hint = document.createElement('div');
+    hint.className = 'suggest-hint';
+    hint.textContent = suggestItems.length
+      ? '在线建议不可用，以上为已收藏站点的匹配'
+      : '在线建议暂不可用，按回车直接搜索';
+    list.appendChild(hint);
+  }
   list.classList.remove('hidden');
+}
+
+/** 在线建议不可用时的本地兜底：匹配已收藏站点的名称与网址 */
+function localSuggest(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const hits = [];
+  getState().sites.forEach((site) => {
+    const name = (site.name || '').toLowerCase();
+    const url = (site.url || '').toLowerCase();
+    if (name.includes(q) || url.includes(q)) hits.push(site.name || site.url);
+  });
+  return hits.slice(0, 6);
 }
 
 async function fetchSuggest(query) {
@@ -191,9 +217,15 @@ async function fetchSuggest(query) {
     const items = Array.isArray(data?.[1]) ? data[1] : [];
     suggestItems = items.slice(0, 8);
     suggestIndex = -1;
+    suggestLocal = false;
     renderSuggest();
   } catch (e) {
-    hideSuggest();
+    /* Google 建议在部分网络下不可达：给出明确提示，并展示本地收藏匹配 */
+    const local = localSuggest(query);
+    suggestItems = local;
+    suggestIndex = -1;
+    suggestLocal = true;
+    renderSuggest();
   }
 }
 
@@ -260,6 +292,27 @@ export function initSearch() {
   });
 
   submit?.addEventListener('click', () => doSearch(input.value));
+
+  /* 输入即搜索：在页面任意位置键入字符或按 “/” 时聚焦搜索框 */
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+    if (loadConfig().hideSearch) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (document.body.classList.contains('panel-open')) return;
+    if (document.querySelector('.modal.open')) return;
+    if (e.key === '/') {
+      e.preventDefault();
+      input.focus();
+      return;
+    }
+    if (e.key.length !== 1 || e.key === ' ') return;
+    e.preventDefault();
+    input.focus();
+    input.value = e.key;
+    input.dispatchEvent(new Event('input'));
+  });
+
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#suggest-list') && !e.target.closest('#search-card')) hideSuggest();
     if (!e.target.closest('#engine-menu') && !e.target.closest('#engine-btn')) {

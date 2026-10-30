@@ -41,10 +41,10 @@
   /* 网格（运行期按窗口/设置计算） */
   --cols: 6;
   --rows: 3;
-  --cell: clamp(104px, 9.4vw, 150px);
-  --col-gap: clamp(18px, 1.6vw, 26px);
-  --row-gap: clamp(18px, 2.4vh, 28px);
-  --row-h: calc(var(--cell) * 0.98);
+  --cell: clamp(112px, 9.6vw, 136px);
+  --col-gap: clamp(22px, 2.6vw, 42px);
+  --row-gap: clamp(22px, 2.6vh, 34px);
+  --row-h: calc(var(--cell) * 0.96);
   --icon-size: calc(var(--cell) * 0.74 * var(--icon-scale, 1));
   --icon-scale: 1;
 

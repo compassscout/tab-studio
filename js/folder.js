@@ -2,6 +2,7 @@
 import {
   getState, getSite, getFolder, addSite, updateSite, addSiteToFolder,
   removeSiteFromFolder, reorderFolder, updateFolder, deleteFolder, getCurrentPage,
+  detachItemFromPages,
 } from './store.js';
 import { normalizeUrl, hostNameOf, toast, openUrl, readFileAsDataURL, compressImage, firstChar } from './utils.js';
 import { paintIcon } from './favicon.js';
@@ -95,11 +96,10 @@ export async function saveSiteEditor() {
     await updateSite(editor.siteId, patch);
   } else {
     const { site } = await addSite({ ...patch, pageId: editor.pageId });
-    if (editor.folderId) await addSiteToFolder(editor.folderId, site.id);
     if (editor.folderId) {
-      // 新建后不重复占用主页格子（文件夹内展示）
-      const page = getCurrentPage();
-      page.siteIds = page.siteIds.filter((id) => id !== site.id);
+      await addSiteToFolder(editor.folderId, site.id);
+      /* 文件夹内展示的站点不占主页格子：从所有分页移除并落库 */
+      await detachItemFromPages(site.id);
     }
   }
   closeModal('site-editor');

@@ -8,6 +8,13 @@ let mode = 'history';
 let keyword = '';
 let items = [];
 let pendingPerm = 'history';
+/* 会话内缓存：面板反复开合不再重复读取全量历史/书签 */
+const cache = { history: { ts: 0, items: [] }, bookmarks: { ts: 0, items: [] } };
+const CACHE_TTL = 60 * 1000;
+/* 分批渲染，避免一次性插入 300+ 行 DOM */
+const STEP = 60;
+let shown = 0;
+let lastGroup = '';
 
 function api(name) {
   return typeof chrome !== 'undefined' && chrome[name] ? chrome[name] : null;
@@ -131,31 +138,39 @@ function row(item) {
   return el;
 }
 
-function render() {
+function render(reset = true) {
   const body = document.getElementById('bd-body');
   if (!body) return;
-  body.innerHTML = '';
+  if (reset) {
+    body.innerHTML = '';
+    shown = 0;
+    lastGroup = '';
+  }
   const list = filtered();
   if (!list.length) {
     body.innerHTML = `<div class="bd-empty">${keyword ? '没有匹配的结果' : (mode === 'history' ? '最近 30 天没有浏览记录' : '还没有书签')}</div>`;
     return;
   }
-  if (mode === 'history') {
-    let lastGroup = '';
-    list.forEach((item) => {
+  const end = Math.min(shown + STEP, list.length);
+  const frag = document.createDocumentFragment();
+  for (let i = shown; i < end; i += 1) {
+    const item = list[i];
+    if (mode === 'history') {
       const label = groupLabel(item.ts);
       if (label !== lastGroup) {
         lastGroup = label;
         const h = document.createElement('div');
         h.className = 'bd-group';
         h.textContent = label;
-        body.appendChild(h);
+        frag.appendChild(h);
       }
-      body.appendChild(row(item));
-    });
-  } else {
-    list.slice(0, 400).forEach((item) => body.appendChild(row(item)));
+    }
+    frag.appendChild(row(item));
   }
+  shown = end;
+  body.appendChild(frag);
+  const more = document.getElementById('bd-more');
+  if (more) more.textContent = shown < list.length ? `滚动加载更多（已显示 ${shown} / ${list.length}）` : '';
 }
 
 async function load() {
@@ -163,6 +178,7 @@ async function load() {
   if (body) body.innerHTML = '<div class="bd-loading">正在读取…</div>';
   try {
     if (mode === 'history') await loadHistory(); else await loadBookmarks();
+    cache[mode] = { ts: Date.now(), items };
     render();
   } catch (e) {
     if (body) body.innerHTML = '<div class="bd-empty">读取失败，请检查权限</div>';
@@ -172,7 +188,6 @@ async function load() {
 async function open(target) {
   mode = target;
   keyword = '';
-  items = [];
   setHeader(target === 'history' ? '历史记录' : '书签');
   const search = document.getElementById('bd-search');
   if (search) search.value = '';
@@ -183,6 +198,12 @@ async function open(target) {
   if (!api(target)) { showGrant(perm); return; }
   const ok = await hasPermission(perm);
   if (!ok) { showGrant(perm); return; }
+  const hit = cache[target];
+  if (hit.items.length && Date.now() - hit.ts < CACHE_TTL) {
+    items = hit.items;
+    render();
+    return;
+  }
   await load();
 }
 
@@ -193,6 +214,12 @@ export function initBrowserData() {
   document.getElementById('bd-search')?.addEventListener('input', (e) => {
     keyword = e.target.value;
     render();
+  });
+  const body = document.getElementById('bd-body');
+  body?.addEventListener('scroll', () => {
+    if (body.scrollTop + body.clientHeight >= body.scrollHeight - 24 && shown < filtered().length) {
+      render(false);
+    }
   });
   document.getElementById('bd-grant')?.addEventListener('click', async () => {
     const ok = await requestPermission(pendingPerm);

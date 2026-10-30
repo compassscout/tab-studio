@@ -13,7 +13,10 @@
     "https://suggestqueries.google.com/*",
     "https://api.bing.com/*",
     "https://api.open-meteo.com/*",
-    "https://geocoding-api.open-meteo.com/*"
+    "https://geocoding-api.open-meteo.com/*",
+    "https://favicon.im/*",
+    "https://icons.duckduckgo.com/*",
+    "https://www.google.com/s2/*"
   ],
   "icons": {
     "16": "icons/icon16.png",

@@ -31,7 +31,6 @@ export const DEFAULT_SITES = [
   { name: '豆瓣', url: 'https://www.douban.com', color: '#2eaf6d', cat: 'reading' },
   { name: '少数派', url: 'https://sspai.com', color: '#d54354', cat: 'tech' },
   { name: '爱奇艺', url: 'https://www.iqiyi.com', color: '#00be06', cat: 'music' },
-  { name: '携程', url: 'https://www.ctrip.com', color: '#2577e3', cat: 'sports' },
 ];
 
 export const PRESET_SITES = [
