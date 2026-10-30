@@ -3,6 +3,20 @@
 > Infinity 风格的新标签页扩展（Chrome Manifest V3），本地优先、无账号、无构建步骤。
 > 当前版本 **v2.1.0**：右侧滑出面板 + 3×6 大圆图标 + 真实网站图标 + 高清壁纸库 + macOS 风格底部 Dock。
 
+## ⬇️ 快速入口
+
+| 用途 | 链接 |
+|---|---|
+| **下载安装包（推荐）** | **[tab-studio-v2.1.0.zip](https://github.com/compassscout/tab-studio/releases/download/v2.1.0/tab-studio-v2.1.0.zip)**（6.0 MB） |
+| 在线主页 / 截图 | https://compassscout.github.io/tab-studio/ |
+| 所有发布版本 | https://github.com/compassscout/tab-studio/releases |
+| 当前版本发布页 | https://github.com/compassscout/tab-studio/releases/tag/v2.1.0 |
+| 安装图文说明 | [安装说明.md](安装说明.md) |
+| 问题反馈 | https://github.com/compassscout/tab-studio/issues |
+
+> **安装三步**：下载 zip → 解压出 `tab-studio-v2.1.0` 文件夹 → 打开 `chrome://extensions`，开启「开发者模式」，点「加载已解压的扩展程序」，选择该文件夹。
+> Chrome 不允许把 zip 直接拖进扩展页安装，这是浏览器限制。
+
 ![首页](screenshots/v2-home.png)
 
 ![Dock](screenshots/v2-dock.png)
