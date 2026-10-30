@@ -13,6 +13,7 @@ async function hydrate() {
   ]);
 }
 
+/** 首次启动确保至少存在一个分页 */
 async function ensureSeeded() {
   if (state.pages.length === 0) {
     const page = { id: uid(), name: '第 1 页', siteIds: [], sortOrder: 0 };
@@ -34,6 +35,7 @@ export function setCurrentPageId(id) { state.currentPageId = id; }
 export function getSite(id) { return state.sites.find((s) => s.id === id); }
 export function getFolder(id) { return state.folders.find((f) => f.id === id); }
 
+/* ---------------- 站点 ---------------- */
 export async function addSite({ name, url, iconType, iconValue, color, description, pageId }) {
   const site = {
     id: uid(), name: name || '', url,
@@ -61,6 +63,7 @@ export async function updateSite(id, patch) {
   return site;
 }
 
+/** 删除站点：同时从所有分页与文件夹引用中移除 */
 export async function deleteSite(id) {
   state.sites = state.sites.filter((s) => s.id !== id);
   state.pages.forEach((p) => { p.siteIds = p.siteIds.filter((x) => x !== id); });
@@ -70,6 +73,7 @@ export async function deleteSite(id) {
   await Promise.all(state.folders.map((f) => db.put('folders', f)));
 }
 
+/* ---------------- 分页 ---------------- */
 export async function addPage(name) {
   const maxOrder = state.pages.reduce((m, p) => Math.max(m, p.sortOrder || 0), -1);
   const page = { id: uid(), name: name || `第 ${state.pages.length + 1} 页`, siteIds: [], sortOrder: maxOrder + 1 };
@@ -78,6 +82,7 @@ export async function addPage(name) {
   return page;
 }
 
+/** 删除分页：仅解除该页引用，站点本体保留在 sites，不删除站点 */
 export async function removePage(id) {
   const idx = state.pages.findIndex((p) => p.id === id);
   if (idx < 0) return;
@@ -87,6 +92,7 @@ export async function removePage(id) {
   if (state.currentPageId === id) state.currentPageId = state.pages[Math.min(idx, state.pages.length - 1)].id;
 }
 
+/** 把站点 id 从旧分页引用移除、加入目标分页引用（站点本体不复制） */
 export async function moveSiteToPage(siteId, targetPageId) {
   state.pages.forEach((p) => { p.siteIds = p.siteIds.filter((x) => x !== siteId); });
   const target = state.pages.find((p) => p.id === targetPageId);
@@ -101,6 +107,16 @@ export async function reorderPage(pageId, siteIds) {
   await db.put('pages', page);
 }
 
+/** 重排分页（拖拽圆点后）：更新 pages 数组顺序与 sortOrder 并写库 */
+export async function reorderPages(orderIds) {
+  const byId = new Map(state.pages.map((p) => [p.id, p]));
+  const next = orderIds.map((id) => byId.get(id)).filter(Boolean);
+  next.forEach((p, i) => { p.sortOrder = i; });
+  state.pages = next;
+  await Promise.all(state.pages.map((p) => db.put('pages', p)));
+}
+
+/* ---------------- 文件夹（仅引用） ---------------- */
 export async function addFolder(name, iconIds = []) {
   const folder = { id: uid(), name, iconIds: [...iconIds] };
   await db.put('folders', folder);
@@ -136,6 +152,7 @@ export async function reorderFolder(folderId, iconIds) {
   if (f) { f.iconIds = iconIds; await db.put('folders', f); }
 }
 
+/* ---------------- 壁纸 ---------------- */
 export async function addWallpaper({ src, favorite = false }) {
   const wp = { id: uid(), src, favorite: !!favorite, addedAt: Date.now() };
   await db.put('wallpapers', wp);
@@ -154,6 +171,7 @@ export async function deleteWallpaper(id) {
   await db.delete('wallpapers', id);
 }
 
+/* ---------------- 待办 ---------------- */
 export async function saveTodoText(text) {
   let todo = state.todos[0];
   if (!todo) {
@@ -166,6 +184,7 @@ export async function saveTodoText(text) {
   return todo;
 }
 
+/* ---------------- 备份整体读写（供 M7） ---------------- */
 export async function exportAll() {
   return {
     sites: await db.getAll('sites'),
@@ -176,6 +195,7 @@ export async function exportAll() {
   };
 }
 
+/** 覆盖恢复：先清五仓库再批量写入，保证一致性 */
 export async function importAll(data) {
   await db.clear('sites'); await db.clear('folders'); await db.clear('pages');
   await db.clear('wallpapers'); await db.clear('todos');

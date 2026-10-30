@@ -5,6 +5,7 @@ import { loadConfig, saveConfig, applyConfigToDom, loadMeta, saveMeta } from './
 import { downloadFile, todayISO, nowISO, toast, debounce } from './utils.js';
 import { renderAll } from './render.js';
 
+/* ---------------- 头像昵称 ---------------- */
 function initProfileInfo() {
   const meta = loadMeta();
   const nameInput = document.getElementById('me-name');
@@ -18,6 +19,7 @@ function initProfileInfo() {
   avatar.addEventListener('click', () => toast('头像自定义上传为二期功能（一期占位）'));
 }
 
+/* ---------------- 同步模块（仅 UI） ---------------- */
 function initSyncUI() {
   const meta = loadMeta();
   const toggle = document.getElementById('sync-toggle');
@@ -31,6 +33,7 @@ function initSyncUI() {
   document.getElementById('backup-now-btn').addEventListener('click', () => doExport(true));
 }
 
+/* ---------------- 备份导出 ---------------- */
 export async function doExport(markSync = false) {
   const data = await exportAll();
   const payload = {
@@ -47,6 +50,7 @@ export async function doExport(markSync = false) {
   toast('备份文件已导出');
 }
 
+/* ---------------- 备份导入 ---------------- */
 function isValidBackup(obj) {
   if (!obj || typeof obj !== 'object') return false;
   if (obj.version !== 1) return false;
@@ -84,6 +88,7 @@ function initImport() {
   });
 }
 
+/* ---------------- 修复数据：字段校验补全，返回摘要 ---------------- */
 async function doRepair() {
   const summary = [];
   const { sites, folders, pages, wallpapers, todos } = getState();
@@ -95,7 +100,7 @@ async function doRepair() {
     if (!/^https?:\/\//i.test(s.url || '')) { s.url = 'https://example.com'; fixed = true; }
     if (!['color', 'preset', 'upload'].includes(s.iconType)) { s.iconType = 'color'; fixed = true; }
     if (typeof s.color !== 'string') { s.color = '#4c8bf5'; fixed = true; }
-    if (!Array.isArray(s.description)) s.description = s.description || '';
+    if (typeof s.description !== 'string') { s.description = ''; fixed = true; }
     if (fixed) { db.put('sites', s); summary.push(`站点「${s.name}」字段已补全`); }
   });
   folders.forEach((f) => {
@@ -138,6 +143,7 @@ function initRepair() {
   document.getElementById('repair-btn').addEventListener('click', doRepair);
 }
 
+/* ---------------- 评价 / 打赏占位 ---------------- */
 function initRating() {
   const stars = document.querySelectorAll('#stars .star');
   stars.forEach((s) => s.addEventListener('click', () => {

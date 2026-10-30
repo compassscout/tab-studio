@@ -1,11 +1,13 @@
 /* render.js — 主页网格 / 站点卡 / 文件夹卡 / 分页圆点渲染 */
-import { getState, getCurrentPage, getSite, getFolder, setCurrentPageId, addPage, removePage, reorderPage } from './store.js';
+import { getState, getCurrentPage, getSite, getFolder, setCurrentPageId, addPage, removePage, reorderPage, reorderPages, addFolder, addSiteToFolder } from './store.js';
+import { db } from './db.js';
 import { openUrl, escapeHtml, firstCharOf, toast } from './utils.js';
 import { PRESET_ICONS } from './presets.js';
 import { loadConfig } from './config.js';
 
 export const PRESET_COLORS = ['#4c8bf5', '#ff6b6b', '#f5a623', '#34c759', '#9b59b6', '#16a085', '#e67e22', '#5b8def'];
 
+/** 渲染单个图标（站点卡 / 文件夹缩略共用），返回 HTML 字符串（已转义） */
 export function iconInner(site, sizeClass = '') {
   if (!site) return '';
   if (site.iconType === 'upload' && site.iconValue) {
@@ -27,6 +29,9 @@ function siteCardEl(site, { anim = false } = {}) {
     <div class="icon-name">${escapeHtml(site.name || '未命名')}</div>`;
   el.addEventListener('click', () => onSiteClick(site));
   el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); window.__openSiteMenu(e, site.id); });
+  el.draggable = true;
+  el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', site.id); e.dataTransfer.effectAllowed = 'move'; el.classList.add('dragging'); });
+  el.addEventListener('dragend', () => { el.classList.remove('dragging'); });
   return el;
 }
 
@@ -79,18 +84,66 @@ export function renderGrid() {
   if (items.length === 0) {
     const tip = document.createElement('div');
     tip.className = 'empty-grid-tip';
-    tip.textContent = '当前分页暂无站点，点击左侧「添加」从预设库添加网站。';
+    tip.textContent = '当前分页暂无站点，点击左侧「添加」或下方 ＋ 添加网站。';
     container.appendChild(tip);
-    return;
+  } else {
+    items.forEach((item, i) => {
+      const el = item.type === 'site' ? siteCardEl(item.data, { anim: cfg.startAnimation })
+                                     : folderCardEl(item.data, { anim: cfg.startAnimation });
+      if (cfg.startAnimation) el.style.animationDelay = (i * 30) + 'ms';
+      container.appendChild(el);
+    });
   }
-  items.forEach((item, i) => {
-    const el = item.type === 'site' ? siteCardEl(item.data, { anim: cfg.startAnimation })
-                                   : folderCardEl(item.data, { anim: cfg.startAnimation });
-    if (cfg.startAnimation) el.style.animationDelay = (i * 30) + 'ms';
-    container.appendChild(el);
+  container.appendChild(makeAddCard());
+}
+
+function makeAddCard() {
+  const add = document.createElement('div');
+  add.className = 'site-card add-card';
+  add.innerHTML = '<div class="icon-content">+</div><div class="icon-name">添加</div>';
+  add.addEventListener('click', () => {
+    if (window.__openSiteEditor) window.__openSiteEditor(null, { pageId: getCurrentPage().id });
+  });
+  return add;
+}
+
+/** 网格拖拽：站点→站点建组 / 站点→文件夹加入（boot 时调用一次） */
+export function initGridDragDrop() {
+  const container = document.getElementById('grid-container');
+  let lastTarget = null;
+  function clearTarget() { if (lastTarget) { lastTarget.classList.remove('drop-target'); lastTarget = null; } }
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    const t = e.target.closest('.site-card');
+    if (t !== lastTarget) { clearTarget(); if (t) t.classList.add('drop-target'); lastTarget = t; }
+  });
+  container.addEventListener('dragleave', (e) => { if (!e.target.closest('.site-card')) clearTarget(); });
+  container.addEventListener('drop', async (e) => {
+    e.preventDefault(); clearTarget();
+    const sourceId = e.dataTransfer.getData('text/plain'); if (!sourceId) return;
+    const target = e.target.closest('.site-card'); if (!target || target.dataset.type === 'add') return;
+    const tId = target.dataset.id; if (sourceId === tId) return;
+    const page = getCurrentPage();
+    try {
+      if (target.dataset.type === 'folder') {
+        await addSiteToFolder(tId, sourceId);
+        page.siteIds = page.siteIds.filter((x) => x !== sourceId);
+        await db.put('pages', page);
+        renderAll(); toast('已把站点加入文件夹');
+      } else if (target.dataset.type === 'site') {
+        const name = window.prompt('新建文件夹名称', '新文件夹');
+        if (name === null) return;
+        const folder = await addFolder(name.trim() || '新文件夹', [sourceId, tId]);
+        page.siteIds = page.siteIds.filter((x) => x !== sourceId && x !== tId);
+        page.siteIds.push(folder.id);
+        await db.put('pages', page);
+        renderAll(); toast('已创建文件夹并收纳 2 个站点');
+      }
+    } catch (err) { toast('操作失败：' + (err && err.message ? err.message : '未知错误')); }
   });
 }
 
+/* ---------------- 分页圆点 ---------------- */
 export function renderDots() {
   const wrap = document.getElementById('dots');
   wrap.innerHTML = '';
@@ -104,6 +157,26 @@ export function renderDots() {
       if (e.target.classList.contains('dot-del')) return;
       setCurrentPageId(page.id);
       renderAll();
+    });
+    dot.draggable = true;
+    dot.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', 'page:' + page.id); e.dataTransfer.effectAllowed = 'move'; dot.classList.add('dragging'); });
+    dot.addEventListener('dragend', () => { dot.classList.remove('dragging'); });
+    dot.addEventListener('dragover', (e) => { e.preventDefault(); dot.classList.add('drop-target'); });
+    dot.addEventListener('dragleave', () => { dot.classList.remove('drop-target'); });
+    dot.addEventListener('drop', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      dot.classList.remove('drop-target');
+      const raw = e.dataTransfer.getData('text/plain');
+      if (!raw || !raw.startsWith('page:')) return;
+      const srcId = raw.slice(5);
+      if (srcId === page.id) return;
+      const order = getState().pages.map((p) => p.id);
+      const si = order.indexOf(srcId); if (si < 0) return;
+      order.splice(si, 1);
+      order.splice(order.indexOf(page.id), 0, srcId);
+      await reorderPages(order);
+      renderAll();
+      toast('分页已重新排序');
     });
     dot.querySelector('.dot-del').addEventListener('click', async (e) => {
       e.stopPropagation();

@@ -1,7 +1,7 @@
 /* main.js — 启动引导：存储初始化 → 配置应用 → 各模块装配 → 渲染 → 侧边栏切换 → 主页搜索 */
 import { initStore, getCurrentPage, getState, setCurrentPageId } from './store.js';
 import { loadConfig, saveConfig, applyConfigToDom, loadMeta, saveMeta } from './config.js';
-import { renderAll, createPageAndGo } from './render.js';
+import { renderAll, createPageAndGo, initGridDragDrop } from './render.js';
 import { initAddTab } from './addtab.js';
 import { initFolderModal, initSlideEditor, initSiteEditor, openSiteEditor, openFolderModal } from './folder.js';
 import { initContextMenu, initConfirm } from './contextmenu.js';
@@ -21,6 +21,9 @@ function initSidebar() {
       document.getElementById(tab.dataset.panel).classList.add('active');
     });
   });
+  /* 折叠按钮切换收起 / 展开（对标原版） */
+  const sc = document.getElementById('sidebar-collapse');
+  if (sc) sc.addEventListener('click', () => document.body.classList.toggle('sb-collapsed'));
 }
 
 function switchToHome() {
@@ -30,6 +33,7 @@ function switchToHome() {
   document.getElementById('panel-home').classList.add('active');
 }
 
+/* 四引擎 × 五类别 URL 模板 [源码核验：原版为百度/谷歌/必应/Yahoo + 网页/图片/资讯/视频/地图] */
 const ENGINES = {
   baidu: {
     web: 'https://www.baidu.com/s?wd=', image: 'https://image.baidu.com/search/index?tn=baiduimage&word=',
@@ -108,6 +112,7 @@ function initPageAdd() {
   document.getElementById('page-add-btn').addEventListener('click', createPageAndGo);
 }
 
+/** 空白网格区域右键 → 手动新建站点 */
 function initGridContextNewSite() {
   const container = document.getElementById('grid-container');
   container.addEventListener('contextmenu', (e) => {
@@ -117,17 +122,29 @@ function initGridContextNewSite() {
   });
 }
 
+function goPage(dir) {
+  const { pages } = getState();
+  const cur = getCurrentPage();
+  const i = pages.findIndex((p) => p.id === cur.id);
+  const next = pages[(i + dir + pages.length) % pages.length];
+  setCurrentPageId(next.id);
+  renderAll();
+}
+
 function initPageArrows() {
-  const go = (dir) => {
-    const { pages } = getState();
-    const cur = getCurrentPage();
-    const i = pages.findIndex((p) => p.id === cur.id);
-    const next = pages[(i + dir + pages.length) % pages.length];
-    setCurrentPageId(next.id);
-    renderAll();
-  };
-  document.getElementById('page-prev').addEventListener('click', () => go(-1));
-  document.getElementById('page-next').addEventListener('click', () => go(1));
+  document.getElementById('page-prev').addEventListener('click', () => goPage(-1));
+  document.getElementById('page-next').addEventListener('click', () => goPage(1));
+}
+
+/* 鼠标滚轮在分页间来回切换（对标原版） */
+function initPageWheel() {
+  const home = document.getElementById('panel-home');
+  let last = 0;
+  home.addEventListener('wheel', (e) => {
+    const now = Date.now(); if (now - last < 260) return; last = now;
+    if (Math.abs(e.deltaY) < 20) return;
+    goPage(e.deltaY > 0 ? 1 : -1);
+  }, { passive: true });
 }
 
 async function boot() {
@@ -149,8 +166,11 @@ async function boot() {
   initPageAdd();
   initGridContextNewSite();
   initPageArrows();
+  initPageWheel();
+  initGridDragDrop();
   renderAll();
   window.__openFolderModal = openFolderModal;
+  window.__openSiteEditor = openSiteEditor;
   window.__APP_BOOTED__ = true;
 }
 
