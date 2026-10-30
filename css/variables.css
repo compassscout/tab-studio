@@ -1,0 +1,84 @@
+/* ============================================================
+ * variables.css — 设计令牌：颜色 / 尺寸 / 圆角 / 阴影 / 动效
+ * 运行期由 js/config.js 写入 documentElement 覆盖带 * 的变量
+ * ============================================================ */
+:root {
+  /* 颜色 */
+  --c-accent: #2d6bfe;
+  --c-accent-weak: rgba(45, 107, 254, 0.1);
+  --c-danger: #ff4e50;
+  --c-danger-weak: rgba(255, 78, 80, 0.1);
+  --c-success: #22b573;
+  --c-warning: #ffb400;
+
+  --c-text: #2b2f36;
+  --c-text-secondary: #5b6270;
+  --c-text-muted: #8d93a1;
+  --c-text-on-dark: #ffffff;
+
+  --c-bg: #f5f6f8;
+  --c-panel: #ffffff;
+  --c-panel-soft: #f2f3f6;
+  --c-panel-hover: #f7f8fa;
+  --c-border: #e8eaef;
+  --c-border-strong: #d9dce3;
+  --c-menu-bg: #ffffff;
+
+  --c-overlay: rgba(17, 21, 28, 0.34);
+  --c-default-body: #202631;
+
+  /* 尺寸 */
+  --panel-width: 420px;
+  --topbar-h: 64px;
+  --page-pad: 28px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 999px;
+
+  /* 网格（运行期按窗口/设置计算） */
+  --cols: 6;
+  --rows: 3;
+  --cell: clamp(112px, 9.6vw, 136px);
+  --col-gap: clamp(22px, 2.6vw, 42px);
+  --row-gap: clamp(22px, 2.6vh, 34px);
+  --row-h: calc(var(--cell) * 0.96);
+  --icon-size: calc(var(--cell) * 0.74 * var(--icon-scale, 1));
+  --icon-scale: 1;
+
+  /* 图标 / 字体（运行期覆盖） */
+  --icon-radius: 50%;
+  --icon-opacity: 1;
+  --icon-font-size: 13px;
+  --icon-font-color: rgb(221, 221, 221);
+  --icon-shadow: none;
+
+  /* 搜索框（运行期覆盖） */
+  --search-width: min(568px, 42vw);
+  --search-scale: 1;
+  --search-radius: 28px;
+  --search-opacity: 1;
+
+  /* 壁纸（运行期覆盖） */
+  --mask-alpha: 0.4;
+  --wallpaper-blur: 0px;
+
+  /* 布局缩放 */
+  --ui-scale: 1;
+
+  /* 动效 */
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 320ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 阴影 */
+  --shadow-search: 0 2px 2px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 8px rgba(23, 28, 38, 0.06);
+  --shadow-pop: 0 12px 32px rgba(23, 28, 38, 0.16);
+  --shadow-panel: -16px 0 48px rgba(17, 21, 28, 0.18);
+  --shadow-icon: 0 3px 10px rgba(0, 0, 0, 0.16);
+}
