@@ -1,9 +1,9 @@
 /* panel.js — 右侧面板：开合 / 添加 / 我的 / 顶部菜单 */
-import { getState, addSite, exportAll, importAll, getCurrentPage, addWallpaper } from './store.js';
+import { getState, addSite, exportAll, importAll, getCurrentPage, addWallpaper, WIDGET_IDS, syncWidgetSlots, reflowPages } from './store.js';
 import { loadConfig, saveConfig, applyConfig, loadMeta, saveMeta } from './config.js';
 import { CATEGORIES, PRESET_SITES, presetsByCategory } from './presets.js';
 import { paintIcon, clearIconCache } from './favicon.js';
-import { normalizeUrl, hostNameOf, toast, downloadFile, todayISO, nowISO, debounce, hasTabs, escapeHtml } from './utils.js';
+import { normalizeUrl, hostNameOf, toast, downloadFile, todayISO, nowISO, debounce, hasTabs, hasDesktop, escapeHtml } from './utils.js';
 import { renderAll } from './render.js';
 import { initSettings, refreshSettingsUI } from './settings.js';
 import { confirmAction } from './dialog.js';
@@ -95,6 +95,23 @@ function renderAddList() {
 }
 
 async function addCurrentPage() {
+  /* 桌面版：没有浏览器标签概念，取应用内最后打开的那个网页 */
+  if (hasDesktop()) {
+    let last = null;
+    try { last = await window.desktop.getLastPage?.(); } catch (e) { last = null; }
+    if (!last || !/^https?:\/\//i.test(last.url || '')) {
+      app().openSiteEditor?.(null);
+      toast('先在应用里打开一个网页，或手动填写网址');
+      return;
+    }
+    const title = last.title || hostNameOf(last.url);
+    const result = await addSite({ name: title, url: last.url, color: '#4c8bf5', pageId: getCurrentPage().id });
+    renderAll();
+    toast(result.moved
+      ? `已添加「${title}」，当前页已满，已顺延到后续页面`
+      : `已添加「${title}」`);
+    return;
+  }
   if (!hasTabs()) {
     /* 网页版降级：把当前窗口地址当作「当前页」收藏 */
     const url = location.href;
@@ -106,8 +123,9 @@ async function addCurrentPage() {
       pageId: getCurrentPage().id,
     });
     renderAll();
-    toast(`已添加「${document.title || hostNameOf(url)}」`);
-    if (result.moved) toast('当前页已满，已放到下一页');
+    toast(result.moved
+      ? `已添加「${document.title || hostNameOf(url)}」，当前页已满，已顺延到后续页面`
+      : `已添加「${document.title || hostNameOf(url)}」`);
     return;
   }
   try {
@@ -121,15 +139,17 @@ async function addCurrentPage() {
     candidates.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
     const tab = candidates[0];
     if (!tab) { toast('没有可添加的网页'); return; }
+    const title = tab.title || hostNameOf(tab.url);
     const result = await addSite({
-      name: tab.title || hostNameOf(tab.url),
+      name: title,
       url: tab.url,
       color: '#4c8bf5',
       pageId: getCurrentPage().id,
     });
     renderAll();
-    toast(`已添加「${tab.title || hostNameOf(tab.url)}」`);
-    if (result.moved) toast('当前页已满，已放到下一页');
+    toast(result.moved
+      ? `已添加「${title}」，当前页已满，已顺延到后续页面`
+      : `已添加「${title}」`);
   } catch (e) {
     toast('获取当前页面失败');
   }
@@ -209,52 +229,70 @@ async function doImport(file) {
 async function doRepair() {
   const { sites, folders, pages } = getState();
   const summary = [];
+  let fixedSites = 0;
   sites.forEach((s) => {
-    if (!/^https?:\/\//i.test(s.url || '')) { s.url = 'https://example.com'; summary.push(`修正站点「${s.name}」的网址`); }
+    if (!/^https?:\/\//i.test(s.url || '')) { s.url = 'https://example.com'; fixedSites++; summary.push(`修正站点「${s.name}」的网址`); }
     if (!s.color) s.color = '#4c8bf5';
     if (!s.iconType) s.iconType = 'auto';
   });
+  /* 小组件是把 id 放在分页里的“虚拟条目”，不属于 sites/folders，
+     过滤时如果只认站点和文件夹，会把小组件槽位全部删掉 */
+  const validItems = new Set([...sites.map((s) => s.id), ...folders.map((f) => f.id), ...WIDGET_IDS]);
+  let droppedItems = 0;
+  const seen = new Set();
   pages.forEach((p) => {
     if (!Array.isArray(p.siteIds)) p.siteIds = [];
-    p.siteIds = p.siteIds.filter((id) => sites.some((s) => s.id === id) || folders.some((f) => f.id === id));
+    const before = p.siteIds.length;
+    p.siteIds = p.siteIds.filter((id) => {
+      if (!validItems.has(id) || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    droppedItems += before - p.siteIds.length;
   });
+  if (droppedItems) summary.push(`清理 ${droppedItems} 个失效/重复的图标引用`);
+  /* 文件夹里指向已删除站点的成员也要清掉，否则卡片会显示空位 */
+  let droppedMembers = 0;
+  folders.forEach((f) => {
+    if (!Array.isArray(f.iconIds)) f.iconIds = [];
+    const before = f.iconIds.length;
+    f.iconIds = f.iconIds.filter((id) => sites.some((s) => s.id === id));
+    droppedMembers += before - f.iconIds.length;
+  });
+  if (droppedMembers) summary.push(`清理文件夹里 ${droppedMembers} 个失效成员`);
   const { db } = await import('./db.js');
   await Promise.all(pages.map((p) => db.put('pages', p)));
   await Promise.all(sites.map((s) => db.put('sites', s)));
+  await Promise.all(folders.map((f) => db.put('folders', f)));
+  await syncWidgetSlots();
+  await reflowPages();
   renderAll();
   await confirmAction(summary.length ? `修复完成：${summary.slice(0, 6).join('；')}` : '数据检查通过，没有发现需要修复的内容。', { okText: '知道了', danger: false });
 }
 
-/* ---------------- 顶部菜单 ---------------- */
+/* ---------------- 顶部按钮与快捷页 ---------------- */
 function initTopMenu() {
   const btn = document.getElementById('menu-btn');
-  const menu = document.getElementById('top-menu');
-  if (!btn || !menu) return;
+  if (!btn) return;
+  /* Infinity 同款交互：右上角按钮直接滑出右侧抽屉，落在「快捷」页 */
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    menu.classList.toggle('hidden');
-    if (!menu.classList.contains('hidden')) {
-      const rect = btn.getBoundingClientRect();
-      menu.style.left = Math.max(8, rect.right - 176) + 'px';
-      menu.style.top = (rect.bottom + 8) + 'px';
-    }
+    openPanel('quick');
   });
-  menu.querySelectorAll('button').forEach((b) => {
-    b.addEventListener('click', () => {
-      menu.classList.add('hidden');
-      const act = b.dataset.act;
+  const grid = document.querySelector('.panel-page[data-page="quick"] .quick-grid');
+  if (!grid) return;
+  grid.querySelectorAll('.quick-tile').forEach((tile) => {
+    tile.addEventListener('click', () => {
+      const act = tile.dataset.act;
+      if (act === 'add-tab') { switchTab('add'); return; }
+      /* 其余动作都会弹独立模态：先收起抽屉再打开，避免两层叠加 */
+      closePanel();
       if (act === 'add-site') app().openSiteEditor?.(null);
-      if (act === 'new-folder') app().newFolder?.();
-      if (act === 'wallpaper') app().openWallpaperLibrary?.();
-      if (act === 'add-tab') openPanel('add');
-      if (act === 'history') openHistory();
-      if (act === 'bookmarks') openBookmarks();
-      if (act === 'settings') openPanel('settings');
-      if (act === 'me') openPanel('me');
+      else if (act === 'new-folder') app().newFolder?.();
+      else if (act === 'wallpaper') app().openWallpaperLibrary?.();
+      else if (act === 'history') openHistory();
+      else if (act === 'bookmarks') openBookmarks();
     });
-  });
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('#top-menu') && !e.target.closest('#menu-btn')) menu.classList.add('hidden');
   });
 }
 

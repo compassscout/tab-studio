@@ -83,14 +83,20 @@ export const db = {
     });
   },
   async clearAll() { for (const s of STORES) await this.clear(s); },
-  /** 一次性覆盖多表（同一个事务，失败自动回滚） */
+  /**
+   * 一次性覆盖多表（同一个事务，失败自动回滚）。
+   * 只处理 map 里显式给出「数组」的表，未提供的表保持原样 ——
+   * 自动备份不含壁纸（dataURL 太大），这里若清空全部表会把用户上传的壁纸一并抹掉。
+   */
   async replaceAll(map) {
+    const names = STORES.filter((name) => Array.isArray(map?.[name]));
+    if (!names.length) return;
     const db = await openDB();
-    const tx = db.transaction(STORES, 'readwrite');
-    STORES.forEach((name) => {
+    const tx = db.transaction(names, 'readwrite');
+    names.forEach((name) => {
       const os = tx.objectStore(name);
       os.clear();
-      (map[name] || []).forEach((v) => os.put(v));
+      map[name].forEach((v) => os.put(v));
     });
     return new Promise((resolve, reject) => {
       tx.oncomplete = () => { notifyWrite(); resolve(); };

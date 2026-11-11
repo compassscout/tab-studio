@@ -102,6 +102,9 @@
   <aside id="panel" aria-label="侧边面板">
     <button id="panel-close" class="panel-close" title="关闭"><svg><use href="#i-close"/></svg></button>
     <nav id="panel-tabs">
+      <button class="panel-tab" data-tab="quick">
+        <span class="tab-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></span><span>快捷</span>
+      </button>
       <button class="panel-tab" data-tab="add">
         <span class="tab-icon"><svg><use href="#i-plus"/></svg></span><span>添加</span>
       </button>
@@ -113,6 +116,30 @@
       </button>
     </nav>
     <div id="panel-body">
+      <!-- 快捷操作 -->
+      <section class="panel-page" data-page="quick">
+        <div class="quick-grid">
+          <button class="quick-tile" data-act="add-site">
+            <span class="quick-ico" style="--tint:#4c8bf5"><svg><use href="#i-plus"/></svg></span><span>添加站点</span>
+          </button>
+          <button class="quick-tile" data-act="new-folder">
+            <span class="quick-ico" style="--tint:#f5a623"><svg><use href="#i-folder"/></svg></span><span>新建文件夹</span>
+          </button>
+          <button class="quick-tile" data-act="wallpaper">
+            <span class="quick-ico" style="--tint:#8e5cf5"><svg><use href="#i-picture"/></svg></span><span>壁纸库</span>
+          </button>
+          <button class="quick-tile" data-act="add-tab">
+            <span class="quick-ico" style="--tint:#00a6a0"><svg><use href="#i-globe"/></svg></span><span>添加网站</span>
+          </button>
+          <button class="quick-tile" data-act="history">
+            <span class="quick-ico" style="--tint:#e1251b"><svg><use href="#i-refresh"/></svg></span><span>历史记录</span>
+          </button>
+          <button class="quick-tile" data-act="bookmarks">
+            <span class="quick-ico" style="--tint:#f5c518"><svg><use href="#i-star"/></svg></span><span>书签</span>
+          </button>
+        </div>
+      </section>
+
       <!-- 添加 -->
       <section class="panel-page" data-page="add">
         <div class="add-search-row">
@@ -188,19 +215,6 @@
   </aside>
 
   <!-- 顶部菜单 -->
-  <div id="top-menu" class="popover hidden">
-    <button data-act="add-site">添加站点</button>
-    <button data-act="new-folder">新建文件夹</button>
-    <button data-act="wallpaper">壁纸库</button>
-    <button data-act="add-tab">添加网站</button>
-    <div class="pop-sep"></div>
-    <button data-act="history">历史记录</button>
-    <button data-act="bookmarks">书签</button>
-    <div class="pop-sep"></div>
-    <button data-act="settings">设置</button>
-    <button data-act="me">我的</button>
-  </div>
-
   <!-- 右键菜单 -->
   <div id="ctx-menu" class="popover hidden"></div>
 

@@ -1,0 +1,67 @@
+{
+  "name": "tab-studio",
+  "productName": "TAB STUDIO",
+  "version": "2.1.0",
+  "description": "TAB STUDIO 桌面版：把新标签页工作台装进独立窗口，源码即界面，改完刷新即可生效。",
+  "private": true,
+  "main": "desktop/main.js",
+  "author": "compassscout",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --devtools",
+    "smoke": "electron . --smoke",
+    "dist": "electron-builder --win --x64",
+    "dist:dir": "electron-builder --win --x64 --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.tabstudio.desktop",
+    "productName": "TAB STUDIO",
+    "copyright": "Copyright © 2025 compassscout",
+    "directories": {
+      "output": "release",
+      "buildResources": "icons"
+    },
+    "files": [
+      "desktop/**/*",
+      "js/**/*",
+      "css/**/*",
+      "icons/**/*",
+      "images/**/*",
+      "newtab.html",
+      "manifest.json",
+      "package.json",
+      "!**/*.map"
+    ],
+    "win": {
+      "icon": "icons/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "TAB-STUDIO-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TAB STUDIO",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "TAB-STUDIO-${version}-portable.${ext}"
+    }
+  }
+}

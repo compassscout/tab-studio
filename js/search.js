@@ -1,6 +1,6 @@
 /* search.js — 搜索引擎 / 类别 / 搜索建议 / 回车搜索 */
 import { loadConfig, saveConfig, loadMeta, saveMeta } from './config.js';
-import { openUrl, debounce, escapeHtml } from './utils.js';
+import { openUrl, debounce, escapeHtml, toast } from './utils.js';
 import { getState } from './store.js';
 
 export const ENGINES = {
@@ -81,6 +81,7 @@ let suggestItems = [];
 let suggestIndex = -1;
 let suggestLocal = false;
 let suggestTimer = null;
+let suggestSeq = 0; /* 请求序号：只认最后一次输入的结果，避免慢响应盖掉新结果 */
 
 function engineMenu() {
   const cfg = loadConfig();
@@ -91,20 +92,56 @@ function engineMenu() {
     menu.className = 'popover hidden';
     document.body.appendChild(menu);
   }
+  menu.classList.add('engine-grid');
   menu.innerHTML = '';
   Object.entries(allEngines()).forEach(([id, engine]) => {
     const btn = document.createElement('button');
+    btn.className = 'engine-tile' + (id === cfg.searchEngine ? ' active' : '');
     btn.dataset.engine = id;
-    btn.innerHTML = `<span class="engine-dot" style="background:${engine.color}">${escapeHtml(engine.letter)}</span><span>${escapeHtml(engine.name)}</span>`;
-    if (id === cfg.searchEngine) btn.style.background = 'var(--c-panel-soft)';
+    btn.title = engine.custom ? `${engine.name}（右键可删除）` : engine.name;
+    btn.innerHTML = `<span class="engine-dot" style="background:${engine.color}">${escapeHtml(engine.letter)}</span><span class="engine-tile-name"></span>`;
+    btn.querySelector('.engine-tile-name').textContent = engine.name;
     btn.addEventListener('click', () => {
       saveConfig({ searchEngine: id });
       menu.classList.add('hidden');
       syncEngine();
       document.getElementById('search-input')?.focus();
     });
+    /* 自定义引擎：右键直接删除，不用绕去设置页 */
+    if (engine.custom) {
+      btn.addEventListener('contextmenu', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const { confirmAction } = await import('./dialog.js');
+        const ok = await confirmAction(`删除搜索引擎「${engine.name}」？`, { okText: '删除' });
+        if (!ok) return;
+        const next = (loadConfig().customEngines || []).filter((x) => x.id !== id);
+        const patch = { customEngines: next };
+        if (loadConfig().searchEngine === id) patch.searchEngine = 'baidu';
+        saveConfig(patch);
+        menu.classList.add('hidden');
+        syncEngine();
+        toast('已删除');
+      });
+    }
     menu.appendChild(btn);
   });
+  /* Infinity 同款「添加」格子：现场走添加流程，成功后直接切换过去 */
+  const add = document.createElement('button');
+  add.className = 'engine-tile engine-add';
+  add.title = '添加自定义搜索引擎';
+  add.innerHTML = `<span class="engine-dot add"><svg><use href="#i-plus"/></svg></span><span class="engine-tile-name">添加</span>`;
+  add.addEventListener('click', async () => {
+    menu.classList.add('hidden');
+    const { addCustomEngineFlow } = await import('./settings.js');
+    const engine = await addCustomEngineFlow();
+    if (engine) {
+      saveConfig({ searchEngine: engine.id });
+      syncEngine();
+    }
+    document.getElementById('search-input')?.focus();
+  });
+  menu.appendChild(add);
   return menu;
 }
 
@@ -160,6 +197,7 @@ function syncClear() {
 }
 
 function hideSuggest() {
+  suggestSeq += 1; /* 收起时作废在途请求，避免弹窗关了又被异步结果重新打开 */
   const list = document.getElementById('suggest-list');
   if (list) list.classList.add('hidden');
   suggestItems = [];
@@ -209,17 +247,20 @@ function localSuggest(query) {
 async function fetchSuggest(query) {
   const cfg = loadConfig();
   if (!cfg.network || !cfg.searchSuggest || !query.trim()) { hideSuggest(); return; }
+  const seq = ++suggestSeq;
   try {
     const url = `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`;
     const res = await fetch(url, { credentials: 'omit' });
     if (!res.ok) throw new Error('bad status');
     const data = await res.json();
+    if (seq !== suggestSeq) return; /* 已经有更新的输入 */
     const items = Array.isArray(data?.[1]) ? data[1] : [];
     suggestItems = items.slice(0, 8);
     suggestIndex = -1;
     suggestLocal = false;
     renderSuggest();
   } catch (e) {
+    if (seq !== suggestSeq) return;
     /* Google 建议在部分网络下不可达：给出明确提示，并展示本地收藏匹配 */
     const local = localSuggest(query);
     suggestItems = local;
@@ -251,7 +292,8 @@ export function initSearch() {
     menu.classList.toggle('hidden');
     if (!menu.classList.contains('hidden')) {
       const rect = engineBtn.getBoundingClientRect();
-      menu.style.left = Math.max(8, rect.left) + 'px';
+      const w = menu.offsetWidth || 320;
+      menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - w - 8)) + 'px';
       menu.style.top = (rect.bottom + 6) + 'px';
     }
     e.stopPropagation();

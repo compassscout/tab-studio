@@ -2,7 +2,6 @@
 import {
   getState, getSite, getFolder, addSite, updateSite, addSiteToFolder,
   removeSiteFromFolder, reorderFolder, updateFolder, deleteFolder, getCurrentPage,
-  detachItemFromPages,
 } from './store.js';
 import { normalizeUrl, hostNameOf, toast, openUrl, readFileAsDataURL, compressImage, firstChar } from './utils.js';
 import { paintIcon } from './favicon.js';
@@ -94,13 +93,12 @@ export async function saveSiteEditor() {
   };
   if (editor.siteId) {
     await updateSite(editor.siteId, patch);
+  } else if (editor.folderId) {
+    /* 直接建在文件夹里：不占主页格子，也不该因为“当前页已满”而多新建一个分页 */
+    const { site } = await addSite({ ...patch, pageId: editor.pageId }, { placeOnPage: false });
+    await addSiteToFolder(editor.folderId, site.id);
   } else {
-    const { site } = await addSite({ ...patch, pageId: editor.pageId });
-    if (editor.folderId) {
-      await addSiteToFolder(editor.folderId, site.id);
-      /* 文件夹内展示的站点不占主页格子：从所有分页移除并落库 */
-      await detachItemFromPages(site.id);
-    }
+    await addSite({ ...patch, pageId: editor.pageId });
   }
   closeModal('site-editor');
   renderAll();
@@ -167,7 +165,8 @@ function renderFolderGrid() {
     label.className = 'label';
     label.textContent = site.name;
     el.appendChild(label);
-    el.addEventListener('click', () => openUrl(site.url, { newTab: true }));
+    /* 编辑模式下的点击用于「移出文件夹」，不能顺带把网站打开 */
+    el.addEventListener('click', () => { if (!folderEditMode) openUrl(site.url, { newTab: true }); });
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       window.app?.openSiteMenu?.(e, site.id, { folderId: currentFolderId });

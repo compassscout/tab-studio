@@ -200,12 +200,13 @@ async function findSpace(startPageId, extra = 1) {
 }
 
 /* ---------------- 站点 ---------------- */
-export async function addSite(data) {
+export async function addSite(data, { placeOnPage = true } = {}) {
   const startPage = data.pageId || state.currentPageId;
-  const targetId = await findSpace(startPage, 1);
+  const targetId = placeOnPage ? await findSpace(startPage, 1) : startPage;
   const site = makeSite(data, targetId);
   await db.put('sites', site);
   state.sites.push(site);
+  if (!placeOnPage) return { site, pageId: targetId, moved: false };
   const page = getPage(targetId);
   if (page && !page.siteIds.includes(site.id)) {
     page.siteIds.push(site.id);
@@ -317,13 +318,15 @@ export async function deletePage(id) {
   const leaving = state.pages[idx];
   state.pages.splice(idx, 1);
   const target = state.pages[0];
+  const writes = [];
   leaving.siteIds.forEach((itemId) => {
     if (!target.siteIds.includes(itemId)) target.siteIds.push(itemId);
     const site = getSite(itemId);
-    if (site) { site.pageId = target.id; db.put('sites', site); }
+    if (site) { site.pageId = target.id; writes.push(db.put('sites', site)); }
   });
   await db.put('pages', target);
   await db.delete('pages', id);
+  await Promise.all(writes);
   if (state.currentPageId === id) state.currentPageId = target.id;
   /* 合并后第 1 页可能超容量，重排到后续分页 */
   await reflowPages();
@@ -351,8 +354,13 @@ export async function reorderPageItems(pageId, orderedIds) {
   await db.put('pages', page);
 }
 
-/** 布局变化后重排：把每页超出的图标顺延到后面的分页，必要时新建分页 */
-export async function reflowPages() {
+/**
+ * 布局变化后重排：把每页超出的图标顺延到后面的分页，必要时新建分页。
+ * compact=true 时还会把后面分页的内容往前面空位回填、并删掉末尾空分页；
+ * 启动时用 compact=false，否则用户手动拖到第 2/3 页的图标会在下次打开时被拉回第 1 页，
+ * 手动新建的空分页也会被删掉。
+ */
+export async function reflowPages({ compact = true } = {}) {
   let i = 0;
   let guard = 0;
   while (i < state.pages.length && guard < 200) {
@@ -377,6 +385,7 @@ export async function reflowPages() {
     }
     i++;
   }
+  if (!compact) return;
   // 布局变大时把后面分页的内容回收，避免留下空分页
   for (let a = 0; a < state.pages.length; a++) {
     const page = state.pages[a];
@@ -541,16 +550,21 @@ export async function exportAll() {
 }
 
 export async function importAll(data) {
-  await db.replaceAll({
-    sites: data.sites || [],
-    folders: data.folders || [],
-    pages: data.pages || [],
-    wallpapers: data.wallpapers || [],
-    todos: data.todos || [],
-    notes: data.notes || [],
+  /* 只覆盖备份里真实存在的表：老备份可能没有 wallpapers/todos/notes，
+     直接传空数组会把当前壁纸和待办一起清掉 */
+  const map = {};
+  ['sites', 'folders', 'pages', 'wallpapers', 'todos', 'notes'].forEach((name) => {
+    if (Array.isArray(data?.[name])) map[name] = data[name];
   });
+  if (!map.pages || !map.pages.length) {
+    map.pages = [{ id: uid('page'), name: '第 1 页', siteIds: [], sortOrder: 0 }];
+  }
+  await db.replaceAll(map);
   await hydrate();
   if (state.pages.length === 0) await seed();
-  state.currentPageId = state.pages[0].id;
+  if (!state.pages.some((p) => p.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
+  /* 备份可能是在「隐藏小组件」时导出的：按当前配置补回槽位，再按容量重排 */
+  await syncWidgetSlots();
+  await reflowPages();
   return state;
 }

@@ -156,7 +156,121 @@ function acquireRemote(start) {
     start(release);
   };
   if (remoteQueue.active < 4) run();
-  else remoteQueue.waiting.push(run);
+  /* 队列过长说明网络很差：不再排队（调用方的 6s 超时会退回首字色块），
+     避免一次渲染几十个图标时无限堆积请求 */
+  else if (remoteQueue.waiting.length < 64) remoteQueue.waiting.push(run);
+}
+
+/** 组装候选图标链：内置图标库 → 本地缓存 → 在线源 → Chrome 缓存 */
+async function buildSources(site, size) {
+  const host = hostNameOf(site.url).split(':')[0];
+  const sources = [];
+  const local = await localIcon(site.url);
+  if (local) sources.push({ src: local.src, remote: false });
+  const brand = local ? (BRAND_COLORS[local.file] || '') : '';
+  if (host) {
+    const cached = await readCache(host);
+    if (cached) sources.push({ src: cached, remote: false });
+  }
+  if (host && loadConfig().network) sources.push(...remoteSources(host));
+  const chromeSrc = chromeFaviconUrl(site.url, size);
+  if (chromeSrc) sources.push({ src: chromeSrc, remote: false });
+  return { sources, brand, host };
+}
+
+/** 探测一个图标地址是否真的可加载（文件夹九宫格等小图场景用） */
+function probeImage(src, timeout = 5000) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    let done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      resolve(ok && img.naturalWidth > 0);
+    };
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false);
+    img.referrerPolicy = 'no-referrer';
+    setTimeout(() => finish(false), timeout);
+    img.src = src;
+  });
+}
+
+const withTimeout = (promise, ms) => Promise.race([
+  promise,
+  new Promise((resolve) => setTimeout(() => resolve(false), ms)),
+]);
+
+/**
+ * 解析站点的真实图标地址（不落 DOM）。
+ * 文件夹九宫格等小图标场景用：与 paintIcon 共用解析缓存 memo，
+ * 主网格解析过的站点这里直接命中，不再发请求。
+ */
+export async function resolveIcon(site, size = 64) {
+  if (site.iconType === 'upload' && site.iconValue) {
+    return { src: site.iconValue, brand: site.color || '' };
+  }
+  if (site.iconType === 'color') return null;
+  const host = hostNameOf(site.url).split(':')[0];
+  const memoKey = host ? `${host}|${size}` : '';
+  const known = memoKey ? resolvedMemo.get(memoKey) : null;
+  if (known) return known;
+
+  const { sources, brand } = await buildSources(site, size);
+  for (const item of sources) {
+    let ok;
+    if (item.remote) {
+      /* 在线源走同一条并发闸门；排队满时 withTimeout 兜底，不会永久挂起 */
+      ok = await withTimeout(new Promise((resolve) => {
+        acquireRemote((release) => {
+          probeImage(item.src).then((result) => { release(); resolve(result); });
+        });
+      }), 8000);
+    } else {
+      ok = await probeImage(item.src);
+    }
+    if (!ok) continue;
+    const res = { src: item.src, brand };
+    if (memoKey) resolvedMemo.set(memoKey, res);
+    if (item.remote && host) writeCache(host, item.src);
+    return res;
+  }
+  return null;
+}
+
+/**
+ * 小尺寸场景（文件夹 / Dock 的迷你九宫格）：
+ * 先用首字色块占位，解析出真实图标后换上，与主网格共用解析缓存。
+ */
+export function paintMiniIcon(container, site) {
+  container.style.backgroundImage = 'none';
+  container.style.background = site.color || '#eef0f4';
+  const showLetter = () => { container.textContent = firstChar(site.name); };
+  if (site.iconType === 'upload' && site.iconValue) {
+    container.style.backgroundImage = `url("${site.iconValue.replace(/"/g, '%22')}")`;
+    container.style.backgroundSize = 'cover';
+    container.style.backgroundPosition = 'center';
+    return;
+  }
+  if (site.iconType === 'color') { showLetter(); return; }
+  showLetter();
+  resolveIcon(site, 64).then((res) => {
+    if (!res || !res.src || !container.isConnected) return;
+    const img = document.createElement('img');
+    img.alt = '';
+    img.decoding = 'async';
+    img.draggable = false;
+    img.referrerPolicy = 'no-referrer';
+    img.addEventListener('error', () => {
+      img.remove();
+      container.style.background = site.color || '#eef0f4';
+      showLetter();
+    }, { once: true });
+    img.src = res.src;
+    container.textContent = '';
+    container.style.background = res.brand || '#ffffff';
+    container.appendChild(img);
+  });
 }
 
 /** 在容器里绘制图标（不返回 HTML，全部走 DOM，避免注入） */
@@ -216,21 +330,7 @@ export function paintIcon(container, site, { size = 64 } = {}) {
       return;
     }
 
-    const sources = [];
-
-    const local = await localIcon(site.url);
-    if (local) sources.push({ src: local.src, remote: false });
-    const brand = local ? (BRAND_COLORS[local.file] || '') : '';
-
-    if (host) {
-      const cached = await readCache(host);
-      if (cached) sources.push({ src: cached, remote: false });
-    }
-
-    if (host && loadConfig().network) sources.push(...remoteSources(host));
-
-    const chromeSrc = chromeFaviconUrl(site.url, size);
-    if (chromeSrc) sources.push({ src: chromeSrc, remote: false });
+    const { sources, brand } = await buildSources(site, size);
 
     if (!alive()) return;
     if (!sources.length) { showLetter(); return; }
@@ -244,18 +344,28 @@ export function paintIcon(container, site, { size = 64 } = {}) {
     img.draggable = false;
     img.referrerPolicy = 'no-referrer';
     if (brand && hexLum(brand) < 0.55) img.classList.add('mono');
+    container.appendChild(img);
 
-    const timer = setTimeout(() => {
-      if (!img.complete) { img.remove(); showLetter(); releaseSlot(); }
-    }, 6000);
-
-    let releaseSlot = () => {};
-    const giveUp = () => {
+    /* 并发名额只释放一次：之前的实现里，超时先放弃的图标在排队轮到自己时
+       仍会占用名额而不归还，漏够 4 次后在线图标就再也不加载了 */
+    let releaseSlot = null;
+    let released = false;
+    let timer = null;
+    const release = () => {
+      if (released) return;
+      released = true;
       clearTimeout(timer);
+      const fn = releaseSlot;
+      releaseSlot = null;
+      if (fn) fn();
+    };
+
+    const giveUp = () => {
+      release();
       img.remove();
       showLetter();
-      releaseSlot();
     };
+
     const next = () => {
       index += 1;
       if (index < sources.length) img.src = sources[index].src;
@@ -264,10 +374,10 @@ export function paintIcon(container, site, { size = 64 } = {}) {
 
     img.addEventListener('error', next);
     img.addEventListener('load', () => {
-      if (!alive()) return;
-      clearTimeout(timer);
+      if (released) return;
+      if (!alive()) { release(); return; }
       if (!img.naturalWidth) { next(); return; }
-      releaseSlot();
+      release();
       const used = sources[index];
       if (used) {
         if (memoKey) resolvedMemo.set(memoKey, { src: used.src, brand });
@@ -275,10 +385,18 @@ export function paintIcon(container, site, { size = 64 } = {}) {
       }
     });
 
-    container.appendChild(img);
+    timer = setTimeout(() => {
+      if (img.complete && img.naturalWidth) return;
+      giveUp();
+    }, 6000);
+
     /* 走在线图标链时限制并发（最多 4 条），弱网下不会一次甩出几十个请求 */
     if (sources.some((s) => s.remote)) {
-      acquireRemote((release) => { releaseSlot = release; img.src = sources[0].src; });
+      acquireRemote((releaseFn) => {
+        if (released) { releaseFn(); return; }
+        releaseSlot = releaseFn;
+        img.src = sources[0].src;
+      });
     } else {
       img.src = sources[0].src;
     }

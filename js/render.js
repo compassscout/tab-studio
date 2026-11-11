@@ -4,7 +4,7 @@ import {
   capacityOfPage, setCurrentPage, addPage, deletePage, reorderPages, pendingTodoCount, recordVisit,
 } from './store.js';
 import { loadConfig, loadMeta } from './config.js';
-import { chromeFaviconUrl, paintIcon } from './favicon.js';
+import { paintIcon, paintMiniIcon } from './favicon.js';
 import { escapeHtml, firstChar, toast, openUrl, debounce } from './utils.js';
 
 const WIDGETS = [
@@ -96,31 +96,14 @@ function folderCell(folder) {
   const el = makeCell('folder', folder.id);
   const icon = document.createElement('span');
   icon.className = 'icon folder-icon';
-  const members = folder.iconIds.map(getSite).filter(Boolean).slice(0, 4);
+  const members = folder.iconIds.map(getSite).filter(Boolean).slice(0, 9);
   if (members.length === 0) {
     icon.innerHTML = '<svg class="folder-empty-ico"><use href="#i-folder"/></svg>';
   } else {
     members.forEach((site) => {
       const mini = document.createElement('span');
       mini.className = 'folder-mini';
-      mini.style.background = site.color || '#eef0f4';
-      if (site.iconType === 'upload' && site.iconValue) {
-        mini.style.backgroundImage = `url("${site.iconValue.replace(/"/g, '%22')}")`;
-        mini.style.backgroundSize = 'cover';
-      } else if (site.iconType === 'color') {
-        mini.textContent = firstChar(site.name);
-      } else {
-        const src = chromeFaviconUrl(site.url, 32);
-        if (src) {
-          const img = document.createElement('img');
-          img.src = src;
-          img.alt = '';
-          img.addEventListener('error', () => { img.remove(); mini.textContent = firstChar(site.name); }, { once: true });
-          mini.appendChild(img);
-        } else {
-          mini.textContent = firstChar(site.name);
-        }
-      }
+      paintMiniIcon(mini, site);
       icon.appendChild(mini);
     });
   }
@@ -548,7 +531,7 @@ export function initWheelPaging() {
     if (e.target.closest('#dock, #pager')) return;
     const now = Date.now();
     if (now - last < 520) return;
-    /* 最后一页继续下滑时由 goPage 自动新建分页 */
+    /* 循环翻页：末页继续下滑回到首页，不会自动新建空分页 */
     if (Math.abs(e.deltaY) < 18) return;
     e.preventDefault();
     last = now;
@@ -564,9 +547,16 @@ function initTrackResize() {
     const ro = new ResizeObserver(() => syncTrackHeight());
     t.querySelectorAll('.page-layer').forEach((layer) => ro.observe(layer));
   }
-  /* 窗口尺寸变化（全屏/窗口化/缩放）时重算轨道高度，避免布局偏离；用 rAF 等布局 reflow 完成再读 offsetHeight，防止读到旧值 */
+  /* 窗口尺寸变化（全屏/窗口化/缩放）时做两件事：
+     1) 重算轨道高度；
+     2) 把轨道位移重新吸附到「-一个视口宽」——位移是像素值，不重吸的话
+        放大/缩小后当前页会停在旧的偏移上，整页图标看起来"跑偏"且不居中 */
   window.addEventListener('resize', () => {
-    requestAnimationFrame(() => requestAnimationFrame(() => syncTrackHeight()));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      /* 翻页动画 / 手势拖动进行中不抢轨道，松手后的 springBack 会用新宽度 */
+      if (!paging && !swipeActive) setTrackX(idleX());
+      syncTrackHeight();
+    }));
   });
 }
 

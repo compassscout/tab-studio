@@ -10,6 +10,31 @@ import { confirmAction, askText } from './dialog.js';
 let root = null;
 let built = false;
 
+/** 添加自定义搜索引擎（设置页与搜索框引擎菜单共用）：成功返回引擎对象 */
+export async function addCustomEngineFlow() {
+  const name = await askText({ title: '添加搜索引擎', placeholder: '名称，例如 知乎', okText: '下一步' });
+  if (!name) return null;
+  const template = await askText({
+    title: `「${name}」的搜索地址`,
+    placeholder: 'https://www.zhihu.com/search?q=%s',
+    value: 'https://www.baidu.com/s?wd=%s',
+    okText: '保存',
+  });
+  if (!template) return null;
+  if (!template.includes('%s')) { toast('地址里需要用 %s 表示关键词位置'); return null; }
+  const palette = ['#2d6bfe', '#e1251b', '#0066ff', '#00a6a0', '#8e44ad', '#ff6a00'];
+  const engine = {
+    id: 'custom-' + Date.now().toString(36),
+    name,
+    letter: name.slice(0, 1),
+    color: palette[Math.floor(Math.random() * palette.length)],
+    template,
+  };
+  saveConfig({ customEngines: [...(loadConfig().customEngines || []), engine] });
+  toast('已添加，可在搜索框左侧引擎菜单中切换');
+  return engine;
+}
+
 const RANGE_SPECS = {
   wallMask: { label: '遮罩浓度', min: 0, max: 100, step: 1, unit: '%' },
   wallBlur: { label: '模糊度', min: 0, max: 20, step: 1, unit: 'px' },
@@ -124,7 +149,7 @@ function build() {
       const wp = currentWallpaper();
       if (!wp) return;
       await updateWallpaper(wp.id, { favorite: !wp.favorite });
-      toast(wp.favorite ? '已取消收藏' : '已加入收藏');
+      toast(wp.favorite ? '已加入收藏' : '已取消收藏');
       syncWpInfo();
     });
     actions.appendChild(change); actions.appendChild(fav);
@@ -315,27 +340,8 @@ function build() {
     renderList();
     const add = el('button', 'btn small', '＋ 添加搜索引擎');
     add.addEventListener('click', async () => {
-      const name = await askText({ title: '添加搜索引擎', placeholder: '名称，例如 知乎', okText: '下一步' });
-      if (!name) return;
-      const template = await askText({
-        title: `「${name}」的搜索地址`,
-        placeholder: 'https://www.zhihu.com/search?q=%s',
-        value: 'https://www.baidu.com/s?wd=%s',
-        okText: '保存',
-      });
-      if (!template) return;
-      if (!template.includes('%s')) { toast('地址里需要用 %s 表示关键词位置'); return; }
-      const palette = ['#2d6bfe', '#e1251b', '#0066ff', '#00a6a0', '#8e44ad', '#ff6a00'];
-      const engine = {
-        id: 'custom-' + Date.now().toString(36),
-        name,
-        letter: name.slice(0, 1),
-        color: palette[Math.floor(Math.random() * palette.length)],
-        template,
-      };
-      saveConfig({ customEngines: [...(loadConfig().customEngines || []), engine] });
-      renderList();
-      toast('已添加，可在搜索框左侧引擎菜单中切换');
+      const engine = await addCustomEngineFlow();
+      if (engine) renderList();
     });
     body.appendChild(list);
     body.appendChild(row('自定义', add, '用 %s 代表关键词'));

@@ -170,10 +170,67 @@
   #panel-tabs { padding-left: 44px; }
 }
 
-/* 搜索引擎下拉 */
-#engine-menu button { gap: 9px; }
+/* 搜索引擎下拉：Infinity 风格图标网格 */
+#engine-menu.engine-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 74px);
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  min-width: 0;
+}
+#engine-menu .engine-tile {
+  display: grid; justify-items: center; align-content: start; gap: 6px;
+  width: auto; padding: 10px 2px 8px;
+  border-radius: 10px;
+  font-size: 11px; text-align: center;
+}
+#engine-menu .engine-tile:hover { background: var(--c-panel-soft); }
+#engine-menu .engine-tile.active { background: var(--c-panel-soft); }
+#engine-menu .engine-dot {
+  width: 40px; height: 40px; flex: 0 0 40px;
+  font-size: 16px; border-radius: 14px;
+  box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.08);
+}
+#engine-menu .engine-tile.active .engine-dot {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c-accent, #4c8bf5);
+}
+#engine-menu .engine-dot.add { background: #f1f3f7; color: #7a8194; }
+#engine-menu .engine-dot.add svg { width: 18px; height: 18px; }
+#engine-menu .engine-tile-name {
+  max-width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  color: var(--c-text);
+}
 .engine-dot {
   width: 22px; height: 22px; border-radius: 50%;
   display: grid; place-items: center;
   color: #fff; font-size: 11px; font-weight: 700; flex: 0 0 22px;
 }
+
+/* 快捷操作页（Infinity 同款图块网格） */
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px 10px;
+  padding-top: 6px;
+}
+.quick-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: none; border: 0; padding: 10px 4px; cursor: pointer;
+  border-radius: 14px;
+  font-size: 12.5px; color: var(--c-text);
+  transition: background var(--dur-fast);
+}
+.quick-tile:hover { background: rgba(0, 0, 0, 0.05); }
+.quick-ico {
+  width: 52px; height: 52px; border-radius: 16px;
+  display: grid; place-items: center;
+  background: var(--tint, #4c8bf5);
+  color: #fff;
+  box-shadow: inset 0 -3px 8px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: transform var(--dur-fast);
+}
+.quick-ico svg { width: 24px; height: 24px; }
+.quick-tile:hover .quick-ico { transform: translateY(-2px); }
+.quick-tile span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

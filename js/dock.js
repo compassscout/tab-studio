@@ -2,8 +2,8 @@
 import { getSite, getFolder, getState } from './store.js';
 import { WIDGETS } from './render.js';
 import { loadConfig, saveConfig } from './config.js';
-import { paintIcon, chromeFaviconUrl } from './favicon.js';
-import { openUrl, toast, firstChar } from './utils.js';
+import { paintIcon, paintMiniIcon } from './favicon.js';
+import { openUrl, toast } from './utils.js';
 
 let dragPayload = null;
 let dropHandled = false;
@@ -66,7 +66,7 @@ export function unpinFromDock(id) {
 function folderIcon(folder, size) {
   const el = document.createElement('span');
   el.className = 'dock-folder';
-  const members = folder.iconIds.map(getSite).filter(Boolean).slice(0, 4);
+  const members = folder.iconIds.map(getSite).filter(Boolean).slice(0, 9);
   if (!members.length) {
     el.innerHTML = '<svg><use href="#i-folder"/></svg>';
     return el;
@@ -74,24 +74,7 @@ function folderIcon(folder, size) {
   members.forEach((site) => {
     const mini = document.createElement('span');
     mini.className = 'dock-mini';
-    mini.style.background = site.color || '#eef0f4';
-    if (site.iconType === 'upload' && site.iconValue) {
-      mini.style.backgroundImage = `url("${site.iconValue.replace(/"/g, '%22')}")`;
-      mini.style.backgroundSize = 'cover';
-    } else if (site.iconType === 'color') {
-      mini.textContent = firstChar(site.name);
-    } else {
-      const src = chromeFaviconUrl(site.url, 32);
-      if (src) {
-        const img = document.createElement('img');
-        img.src = src;
-        img.alt = '';
-        img.addEventListener('error', () => { img.remove(); mini.textContent = firstChar(site.name); }, { once: true });
-        mini.appendChild(img);
-      } else {
-        mini.textContent = firstChar(site.name);
-      }
-    }
+    paintMiniIcon(mini, site);
     el.appendChild(mini);
   });
   return el;

@@ -1,7 +1,7 @@
 /* browserdata.js — 历史记录 / 书签（可选权限，按需申请） */
 import { loadConfig } from './config.js';
 import { openModal } from './dialog.js';
-import { openUrl, escapeHtml, toast } from './utils.js';
+import { openUrl, escapeHtml, toast, hasDesktop } from './utils.js';
 import { paintIcon } from './favicon.js';
 
 let mode = 'history';
@@ -62,6 +62,22 @@ function showGrant(perm) {
     if (g) g.classList.add('hidden');
     await load();
   });
+}
+
+/** 桌面版没有浏览器历史/书签，给出明确说明而不是弹一个点了没反应的授权按钮 */
+function showUnsupported(target) {
+  const grant = document.getElementById('bd-grant');
+  if (grant) grant.classList.add('hidden');
+  const body = document.getElementById('bd-body');
+  if (!body) return;
+  const label = target === 'history' ? '历史记录' : '书签';
+  body.innerHTML = `
+    <div class="bd-perm">
+      <div class="bd-perm-icon"><svg><use href="#i-globe"/></svg></div>
+      <h4>桌面版读不到${label}</h4>
+      <p>浏览历史和书签属于浏览器，桌面应用里没有这份数据。你的站点、文件夹、分页与壁纸不受影响。</p>
+      <p class="muted small">需要这个功能时，把同一份源码当作 Chrome 扩展加载即可：chrome://extensions → 开发者模式 → 加载已解压的扩展程序。</p>
+    </div>`;
 }
 
 function groupLabel(ts) {
@@ -194,6 +210,7 @@ async function open(target) {
   const grant = document.getElementById('bd-grant');
   if (grant) grant.classList.add('hidden');
   openModal('browser-modal');
+  if (hasDesktop()) { showUnsupported(target); return; }
   const perm = target === 'history' ? 'history' : 'bookmarks';
   if (!api(target)) { showGrant(perm); return; }
   const ok = await hasPermission(perm);

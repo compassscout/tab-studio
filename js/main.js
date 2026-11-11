@@ -15,10 +15,11 @@ import { initDrag } from './drag.js';
 import { initDock, pinToDock, unpinFromDock, dockMenu } from './dock.js';
 import { openHistory, openBookmarks, initBrowserData } from './browserdata.js';
 import { openLibrary } from './wallpaper.js';
-import { toast } from './utils.js';
+import { toast, hasDesktop } from './utils.js';
 
 /* 首次运行：数据与联网说明（商业化发布所需的披露，同时也是一次性告知） */
 function showPrivacyNotice() {
+  const desktop = hasDesktop();
   const backdrop = document.createElement('div');
   backdrop.className = 'sheet-backdrop open';
   backdrop.style.zIndex = '1250';
@@ -32,7 +33,9 @@ function showPrivacyNotice() {
     <div class="modal-body">
       <p><b>数据只存在这台电脑上。</b>站点、文件夹、分页、壁纸、待办和笔记保存在本机 IndexedDB，不上传、不需要账号。</p>
       <p><b>联网只用于两件事。</b>一是取网站图标（会把域名发给 favicon.im、DuckDuckGo、Google 的图标服务），二是搜索建议与天气。</p>
-      <p><b>可选权限按需申请。</b>历史记录和书签只在你主动打开对应功能时才申请，拒绝也不影响其他功能。</p>
+      <p><b>可选权限按需申请。</b>${desktop
+        ? '桌面版没有浏览器历史与书签；需要时把同一份源码作为 Chrome 扩展加载即可，不影响这里的数据。'
+        : '历史记录和书签只在你主动打开对应功能时才申请，拒绝也不影响其他功能。'}</p>
     </div>
     <div class="modal-foot"><button class="btn" data-settings>去设置</button><button class="btn primary" data-ok>知道了</button></div>`;
 
@@ -65,7 +68,8 @@ async function boot() {
     if (!ok && backupFailed) toast('自动备份失败：本地空间不足，请到「我的 → 备份与恢复」手动导出', 4200);
   });
   await syncWidgetSlots();
-  await reflowPages();
+  /* 启动只做「溢出顺延」，不回收：保留用户手动分页与手动新建的空页 */
+  await reflowPages({ compact: false });
   applyConfig(loadConfig());
 
   initDialogs();
@@ -84,6 +88,27 @@ async function boot() {
   initDock();
   initSettings();
   initWallpaper();
+
+  /* 桌面壳：下载完成 / 应用级提示统一走页面 Toast */
+  if (hasDesktop() && window.desktop.onToast) {
+    try { window.desktop.onToast((msg) => toast(msg, 2800)); } catch (e) { /* 忽略 */ }
+  }
+
+  /* 桌面壳：应用菜单里的快捷键落到页面动作上 */
+  if (hasDesktop() && window.desktop.onShortcut) {
+    try {
+      window.desktop.onShortcut((action) => {
+        if (action === 'add') openPanel('add');
+        else if (action === 'settings') openPanel('settings');
+        else if (action === 'wallpaper') openLibrary('all');
+        else if (action === 'folder') window.app?.newFolder?.();
+        else if (action === 'search') {
+          const input = document.getElementById('search-input');
+          if (input) { input.focus(); input.select(); }
+        }
+      });
+    } catch (e) { /* 忽略 */ }
+  }
 
   /* 跨标签页同步：另一个新标签页改了数据，本页自动重新读取并刷新 */
   if (typeof BroadcastChannel !== 'undefined') {
@@ -162,7 +187,6 @@ async function boot() {
     if (e.key !== 'Escape') return;
     if (document.querySelector('.modal.open')) return;
     if (document.body.classList.contains('panel-open')) closePanel();
-    document.getElementById('top-menu')?.classList.add('hidden');
   });
 
   window.addEventListener('resize', () => {

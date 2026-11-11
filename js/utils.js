@@ -55,18 +55,30 @@ export function hasTabs() {
   return hasChrome() && !!chrome.tabs && typeof chrome.tabs.create === 'function';
 }
 
-/** 打开地址：新标签页 / 当前标签页 */
+/** 桌面壳是否可用（Electron 通过 preload 注入） */
+export function hasDesktop() {
+  return typeof window !== 'undefined' && !!(window.desktop && window.desktop.isDesktop);
+}
+
+/** 打开地址：桌面壳窗口 / 新标签页 / 当前标签页 */
 export function openUrl(url, { newTab = true } = {}) {
   if (!url) return;
+  const target = String(url).trim();
+  /* 只放行网页地址，避免把 javascript:/data: 之类的地址交给窗口或标签页 */
+  if (!/^https?:\/\//i.test(target) && !/^mailto:/i.test(target)) return;
+  if (hasDesktop() && window.desktop.openUrl) {
+    window.desktop.openUrl(target, { newTab }).catch(() => {});
+    return;
+  }
   if (hasTabs()) {
     try {
-      if (newTab) chrome.tabs.create({ url, active: true });
-      else chrome.tabs.update({ url });
+      if (newTab) chrome.tabs.create({ url: target, active: true });
+      else chrome.tabs.update({ url: target });
       return;
     } catch (e) { /* 落兜底 */ }
   }
-  if (newTab) window.open(url, '_blank', 'noopener');
-  else location.href = url;
+  if (newTab) window.open(target, '_blank', 'noopener');
+  else location.href = target;
 }
 
 let toastTimer = null;
