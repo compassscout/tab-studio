@@ -1,7 +1,7 @@
 {
   "name": "tab-studio",
   "productName": "TAB STUDIO",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "TAB STUDIO 桌面版：把新标签页工作台装进独立窗口，源码即界面，改完刷新即可生效。",
   "private": true,
   "main": "desktop/main.js",
@@ -42,11 +42,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "TAB-STUDIO-${version}-${arch}.${ext}"

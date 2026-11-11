@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TAB STUDIO",
   "description": "TAB STUDIO — Infinity 风格新标签页：真实网站图标、高清壁纸库、3×6 大图标网格、macOS 风格 Dock、文件夹、多分页、待办/笔记/天气小组件与本地备份。",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

@@ -6,7 +6,7 @@
 > 落地页 / 下载页：[https://tab-studio.pages.dev/](https://tab-studio.pages.dev/) ｜ 浏览器直接打开即可使用，不需要安装扩展。
 
 > Infinity 风格的新标签页扩展（Chrome Manifest V3），本地优先、无账号、无构建步骤。
-> 当前版本 **v2.1.0**：右侧滑出面板 + 3×6 大圆图标 + 真实网站图标 + 高清壁纸库 + macOS 风格底部 Dock。
+> 当前版本 **v2.2.0**：右侧滑出面板 + 3×6 大圆图标 + 真实网站图标 + 高清壁纸库 + macOS 风格底部 Dock。
 > 最新已支持：**分页纯圆点循环翻页（对标 Infinity）**、**网页版浏览器直开即用**（无需安装扩展）、**Windows 桌面版（Electron）**。
 
 ## ⬇️ 快速入口
@@ -14,22 +14,22 @@
 | 用途 | 链接 |
 |---|---|
 | **网页版直接使用（推荐）** | **[https://tab-studio.pages.dev/newtab.html](https://tab-studio.pages.dev/newtab.html)**（Cloudflare Pages，含 2026-11-11 全部修复） |
-| **下载安装包（最新版）** | **[tab-studio-v2.1.0.zip](https://tab-studio.pages.dev/assets/tab-studio-v2.1.0.zip)**（含 2026-11-11 修复版源码） |
+| **下载安装包（最新版）** | **[tab-studio-v2.2.0.zip](https://tab-studio.pages.dev/assets/tab-studio-v2.2.0.zip)**（含 2026-11-11 全部修复） |
 | 在线落地页 / 截图 | https://tab-studio.pages.dev/ |
 | 旧站点（GitHub Pages，保留） | https://compassscout.github.io/tab-studio/ |
 | 所有发布版本 | https://github.com/compassscout/tab-studio/releases |
-| 当前版本发布页 | https://github.com/compassscout/tab-studio/releases/tag/v2.1.0 |
+| 当前版本发布页 | https://github.com/compassscout/tab-studio/releases/tag/v2.2.0 |
 | 安装图文说明 | [安装说明.md](安装说明.md) |
 | 问题反馈 | https://github.com/compassscout/tab-studio/issues |
 
-> **安装三步**：下载 zip → 解压出 `tab-studio-v2.1.0` 文件夹 → 打开 `chrome://extensions`，开启「开发者模式」，点「加载已解压的扩展程序」，选择该文件夹。
+> **安装三步**：下载 zip → 解压出 `tab-studio-v2.2.0` 文件夹 → 打开 `chrome://extensions`，开启「开发者模式」，点「加载已解压的扩展程序」，选择该文件夹。
 > Chrome 不允许把 zip 直接拖进扩展页安装，这是浏览器限制。
 
 ![首页](screenshots/v2-home.png)
 
 ![Dock](screenshots/v2-dock.png)
 
-## 2026-11-11 更新（v2.1.0 修复版）
+## 2026-11-11 更新（v2.2.0）
 
 本次是一次集中的 bug 修复 + 桌面版落地，站点数据、备份格式、配置项均未变化，直接替换源码即可升级，数据不丢。逐条如下：
 
@@ -116,7 +116,7 @@
 ```bash
 双击 启动.bat          # 自动装依赖 → 开窗；之后每次直接启动
 Ctrl+R                # 改完 js/css/html 立即重载
-双击 打包.bat          # 生成 release/TAB-STUDIO-2.1.0-x64.exe 与 portable 免安装版
+双击 打包.bat          # 生成 release/TAB-STUDIO-2.2.0-x64.exe 与 portable 免安装版
 ```
 
 - 站点在应用内的独立窗口打开；「添加当前网页」取应用内最后打开的网页
