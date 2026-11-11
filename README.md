@@ -16,16 +16,19 @@
 | 版本 | 适合什么场景 | 下载 / 打开 | 说明 |
 |---|---|---|---|
 | **网页版** | 不想装任何东西、临时用、换电脑用 | 在线直接打开：[tab-studio.pages.dev/newtab.html](https://tab-studio.pages.dev/newtab.html)<br>离线包：[tab-studio-web-v2.2.0.zip](https://tab-studio.pages.dev/assets/tab-studio-web-v2.2.0.zip)（解压后需用本地 HTTP 服务打开，见包内 `网页版说明.txt`） | 数据存在浏览器 IndexedDB；读不到浏览器历史/书签 |
-| **扩展版**（日常主力） | 想让它当 Chrome/Edge 的新标签页 | [tab-studio-extension-v2.2.0.zip](https://tab-studio.pages.dev/assets/tab-studio-extension-v2.2.0.zip) → 解压 → 加载已解压的扩展程序 | 可直接读浏览器历史/书签（可选授权）；新开标签页即生效 |
+| **扩展版**（日常主力） | 想让它当 Chrome/Edge 的新标签页 | **Edge 商店一键安装：[TAB STUDIO — Microsoft Edge 加载项](https://microsoftedge.microsoft.com/addons/detail/tab-studio/jljjjpcgkhdejiijhcmlpeiodkbiepim)**（商店条目 ID `jljjjpcgkhdejiijhcmlpeiodkbiepim`）<br>Chrome / 手动安装：[tab-studio-extension-v2.2.0.zip](https://tab-studio.pages.dev/assets/tab-studio-extension-v2.2.0.zip) → 解压 → 加载已解压的扩展程序 | 可直接读浏览器历史/书签（可选授权）；新开标签页即生效。<br>注意：Edge 商店当前上架版本为 **2.1.0**，**v2.2.0 已提交审核**（审核通过后商店会自动更新）；想立刻用 2.2.0 请用下面的 zip |
 | **桌面版**（Windows） | 想要独立窗口的 exe、不依赖浏览器扩展 | [TAB-STUDIO-2.2.0-x64.exe（安装版）](https://github.com/compassscout/tab-studio/releases/download/v2.2.0/TAB-STUDIO-2.2.0-x64.exe)<br>[TAB-STUDIO-2.2.0-portable.exe（免安装）](https://github.com/compassscout/tab-studio/releases/download/v2.2.0/TAB-STUDIO-2.2.0-portable.exe) | 独立窗口、源码可改、`Ctrl+R` 生效；另有源码包可在仓库 `启动.bat` 直接跑 |
 
 > **扩展版安装三步**：下载 `tab-studio-extension-v2.2.0.zip` → 解压出 `tab-studio-extension-v2.2.0` 文件夹 → 打开 `chrome://extensions`，开启「开发者模式」，点「加载已解压的扩展程序」，选择该文件夹。
 > Chrome 不允许把 zip 直接拖进扩展页安装，这是浏览器限制。
+>
+> **Edge 用户更省事**：直接在 [Microsoft Edge 加载项商店](https://microsoftedge.microsoft.com/addons/detail/tab-studio/jljjjpcgkhdejiijhcmlpeiodkbiepim) 点「获取」即可，不用开发者模式。商店版本随审核节奏走（当前 2.1.0，v2.2.0 审核中）。
 
 ## 其它入口
 
 | 用途 | 链接 |
 |---|---|
+| **Edge 商店安装页（Microsoft Edge 加载项）** | **https://microsoftedge.microsoft.com/addons/detail/tab-studio/jljjjpcgkhdejiijhcmlpeiodkbiepim** |
 | 在线落地页 / 截图 / 三个版本下载 | https://tab-studio.pages.dev/ |
 | 所有发布版本 | https://github.com/compassscout/tab-studio/releases |
 | 当前版本发布页 | https://github.com/compassscout/tab-studio/releases/tag/v2.2.0 |
