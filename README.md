@@ -9,21 +9,29 @@
 > 当前版本 **v2.2.0**：右侧滑出面板 + 3×6 大圆图标 + 真实网站图标 + 高清壁纸库 + macOS 风格底部 Dock。
 > 最新已支持：**分页纯圆点循环翻页（对标 Infinity）**、**网页版浏览器直开即用**（无需安装扩展）、**Windows 桌面版（Electron）**。
 
-## ⬇️ 快速入口
+## ⬇️ 三个版本，按需要挑一个
+
+同一份源码，三种装法。功能一致，**数据各自独立**，可用「备份与恢复」互相导入导出。
+
+| 版本 | 适合什么场景 | 下载 / 打开 | 说明 |
+|---|---|---|---|
+| **网页版** | 不想装任何东西、临时用、换电脑用 | 在线直接打开：[tab-studio.pages.dev/newtab.html](https://tab-studio.pages.dev/newtab.html)<br>离线包：[tab-studio-web-v2.2.0.zip](https://tab-studio.pages.dev/assets/tab-studio-web-v2.2.0.zip)（解压后需用本地 HTTP 服务打开，见包内 `网页版说明.txt`） | 数据存在浏览器 IndexedDB；读不到浏览器历史/书签 |
+| **扩展版**（日常主力） | 想让它当 Chrome/Edge 的新标签页 | [tab-studio-extension-v2.2.0.zip](https://tab-studio.pages.dev/assets/tab-studio-extension-v2.2.0.zip) → 解压 → 加载已解压的扩展程序 | 可直接读浏览器历史/书签（可选授权）；新开标签页即生效 |
+| **桌面版**（Windows） | 想要独立窗口的 exe、不依赖浏览器扩展 | [TAB-STUDIO-2.2.0-x64.exe（安装版）](https://github.com/compassscout/tab-studio/releases/download/v2.2.0/TAB-STUDIO-2.2.0-x64.exe)<br>[TAB-STUDIO-2.2.0-portable.exe（免安装）](https://github.com/compassscout/tab-studio/releases/download/v2.2.0/TAB-STUDIO-2.2.0-portable.exe) | 独立窗口、源码可改、`Ctrl+R` 生效；另有源码包可在仓库 `启动.bat` 直接跑 |
+
+> **扩展版安装三步**：下载 `tab-studio-extension-v2.2.0.zip` → 解压出 `tab-studio-extension-v2.2.0` 文件夹 → 打开 `chrome://extensions`，开启「开发者模式」，点「加载已解压的扩展程序」，选择该文件夹。
+> Chrome 不允许把 zip 直接拖进扩展页安装，这是浏览器限制。
+
+## 其它入口
 
 | 用途 | 链接 |
 |---|---|
-| **网页版直接使用（推荐）** | **[https://tab-studio.pages.dev/newtab.html](https://tab-studio.pages.dev/newtab.html)**（Cloudflare Pages，含 2026-11-11 全部修复） |
-| **下载安装包（最新版）** | **[tab-studio-v2.2.0.zip](https://tab-studio.pages.dev/assets/tab-studio-v2.2.0.zip)**（含 2026-11-11 全部修复） |
-| 在线落地页 / 截图 | https://tab-studio.pages.dev/ |
-| 旧站点（GitHub Pages，保留） | https://compassscout.github.io/tab-studio/ |
+| 在线落地页 / 截图 / 三个版本下载 | https://tab-studio.pages.dev/ |
 | 所有发布版本 | https://github.com/compassscout/tab-studio/releases |
 | 当前版本发布页 | https://github.com/compassscout/tab-studio/releases/tag/v2.2.0 |
+| 旧站点（GitHub Pages，保留） | https://compassscout.github.io/tab-studio/ |
 | 安装图文说明 | [安装说明.md](安装说明.md) |
 | 问题反馈 | https://github.com/compassscout/tab-studio/issues |
-
-> **安装三步**：下载 zip → 解压出 `tab-studio-v2.2.0` 文件夹 → 打开 `chrome://extensions`，开启「开发者模式」，点「加载已解压的扩展程序」，选择该文件夹。
-> Chrome 不允许把 zip 直接拖进扩展页安装，这是浏览器限制。
 
 ![首页](screenshots/v2-home.png)
 
