@@ -6,7 +6,7 @@ export const STORES = ['sites', 'folders', 'pages', 'wallpapers', 'todos', 'note
 export const ICON_STORE = 'iconCache';
 /** 外观设置镜像：防止清理浏览器数据后设置全部丢失（不参与导入导出与自动备份） */
 export const SETTINGS_STORE = 'settingsMirror';
-/** 每日自动备份快照（v2.3 起从 localStorage 迁入，不再受 5MB 配额限制） */
+/** 每日自动备份快照（存于 IndexedDB，不再受 localStorage 约 5MB 配额限制） */
 export const BACKUP_STORE = 'autoBackup';
 
 let dbPromise = null;
@@ -116,7 +116,7 @@ export const db = {
 };
 
 /* ---------------- 本地自动备份（每日快照，最多保留 3 份） ----------------
- * v2.3 起快照存在 IndexedDB 的 autoBackup 表（自增 key，按写入顺序即时间顺序）。
+ * 快照存在 IndexedDB 的 autoBackup 表（自增 key，按写入顺序即时间顺序）。
  * 早期版本存在 localStorage，配额约 5MB，站点/待办一多就写失败——这里做一次性迁移。
  */
 const LEGACY_AUTO_KEY = 'compass_auto_backup';

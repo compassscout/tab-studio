@@ -111,7 +111,7 @@ export async function seedWallpapers() {
     if (!existing.has(item.id)) {
       await addWallpaper({ id: item.id, src: item.file, type: 'builtin', name: item.name });
     } else {
-      /* v2.3 起内置壁纸换成 webp，把老用户库里的旧路径迁过去（文件已不存在时） */
+      /* 内置壁纸已换成 webp，把老用户库里的旧 jpg 路径迁过去 */
       const wp = getWallpaper(item.id);
       if (wp && /\.jpg$/i.test(wp.src || '') && wp.src !== item.file) {
         await updateWallpaper(item.id, { src: item.file });
