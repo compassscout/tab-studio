@@ -549,22 +549,132 @@ export async function exportAll() {
   };
 }
 
-export async function importAll(data) {
-  /* 只覆盖备份里真实存在的表：老备份可能没有 wallpapers/todos/notes，
-     直接传空数组会把当前壁纸和待办一起清掉 */
-  const map = {};
-  ['sites', 'folders', 'pages', 'wallpapers', 'todos', 'notes'].forEach((name) => {
-    if (Array.isArray(data?.[name])) map[name] = data[name];
-  });
-  if (!map.pages || !map.pages.length) {
-    map.pages = [{ id: uid('page'), name: '第 1 页', siteIds: [], sortOrder: 0 }];
+const IMPORT_TABLES = ['sites', 'folders', 'pages', 'wallpapers', 'todos', 'notes'];
+const TABLE_LIMITS = { sites: 20000, folders: 5000, pages: 5000, wallpapers: 5000, todos: 20000, notes: 100 };
+
+/**
+ * 备份数据的记录级校验（importAll 内部调用）。
+ * 原则：结构性问题（不是对象 / formatVersion 过新 / 数量离谱）直接拒绝；
+ * 单条记录问题（id 非法、网址畸形、引用悬空）跳过该条并记录说明，不拖垮整库。
+ * 输入里没有的表不会出现在输出里——replaceAll 只覆盖给出的表，防止老备份清空现有数据。
+ * @returns {{ok:boolean, reason?:string, data?:object, issues?:string[]}}
+ */
+export function sanitizeImport(raw) {
+  const issues = [];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: '备份内容不是对象' };
+  if (raw.formatVersion != null && Number(raw.formatVersion) > 1) {
+    return { ok: false, reason: `备份来自更新的格式（formatVersion ${raw.formatVersion}），请先升级 TAB STUDIO` };
   }
-  await db.replaceAll(map);
+  const isId = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
+  const out = {};
+
+  for (const name of IMPORT_TABLES) {
+    const list = raw[name];
+    if (!Array.isArray(list)) continue; /* 老备份可能没有该表：保持现状，不覆盖 */
+    if (list.length > TABLE_LIMITS[name]) {
+      return { ok: false, reason: `备份中「${name}」数量异常（${list.length} 条），已拒绝` };
+    }
+    out[name] = list;
+  }
+
+  /* 站点：必须有合法 id 与 http(s) 网址；其余字段原样保留 */
+  if (out.sites) {
+    const seen = new Set();
+    out.sites = out.sites.filter((s, i) => {
+      if (!s || typeof s !== 'object' || !isId(s.id)) { issues.push(`站点第 ${i + 1} 条 id 非法，已跳过`); return false; }
+      if (!/^https?:\/\//i.test(String(s.url || ''))) { issues.push(`站点「${s.name || s.id}」网址非法，已跳过`); return false; }
+      if (seen.has(s.id)) { issues.push(`站点 id 重复（${s.id}），已跳过后者`); return false; }
+      seen.add(s.id);
+      return true;
+    });
+    out.sites.forEach((s) => { s.name = String(s.name || '').slice(0, 200); });
+  }
+  /* 文件夹：iconIds 必须是字符串数组 */
+  if (out.folders) {
+    const seen = new Set();
+    out.folders = out.folders.filter((f, i) => {
+      if (!f || typeof f !== 'object' || !isId(f.id)) { issues.push(`文件夹第 ${i + 1} 条 id 非法，已跳过`); return false; }
+      if (seen.has(f.id)) { issues.push(`文件夹 id 重复（${f.id}），已跳过后者`); return false; }
+      seen.add(f.id);
+      return true;
+    });
+    out.folders.forEach((f) => {
+      f.iconIds = (Array.isArray(f.iconIds) ? f.iconIds : []).filter(isId);
+      f.name = String(f.name || '文件夹').slice(0, 200);
+    });
+  }
+  /* 壁纸：src 只接受本地路径、http(s)、data:、gradient: 四种形态 */
+  if (out.wallpapers) {
+    const SRC_OK = /^(images\/|https?:\/\/|data:|gradient:)/i;
+    const seen = new Set();
+    out.wallpapers = out.wallpapers.filter((w, i) => {
+      if (!w || typeof w !== 'object' || !isId(w.id)) { issues.push(`壁纸第 ${i + 1} 条 id 非法，已跳过`); return false; }
+      if (!SRC_OK.test(String(w.src || ''))) { issues.push(`壁纸「${w.name || w.id}」地址形态异常，已跳过`); return false; }
+      if (seen.has(w.id)) return false;
+      seen.add(w.id);
+      return true;
+    });
+  }
+  if (out.todos) {
+    out.todos = out.todos.filter((t, i) => {
+      if (!t || typeof t !== 'object' || !isId(t.id)) { issues.push(`待办第 ${i + 1} 条非法，已跳过`); return false; }
+      t.text = String(t.text || '').slice(0, 2000);
+      return true;
+    });
+  }
+  if (out.notes) {
+    out.notes = out.notes.filter((n, i) => {
+      if (!n || typeof n !== 'object' || !isId(n.id)) { issues.push(`笔记第 ${i + 1} 条非法，已跳过`); return false; }
+      n.text = String(n.text || '');
+      return true;
+    });
+  }
+
+  /* 分页：siteIds 只保留指向已知对象（站点/文件夹/小组件）的引用；
+   * 若备份没给站点/文件夹表则无从核对，仅去掉非字符串 */
+  if (out.pages) {
+    const slotIds = new Set([
+      ...(out.sites || []).map((s) => s.id),
+      ...(out.folders || []).map((f) => f.id),
+    ]);
+    const canCheck = raw.sites != null && raw.folders != null;
+    WIDGET_IDS.forEach((id) => slotIds.add(id));
+    const seen = new Set();
+    out.pages = out.pages.filter((p, i) => {
+      if (!p || typeof p !== 'object' || !isId(p.id)) { issues.push(`分页第 ${i + 1} 条 id 非法，已跳过`); return false; }
+      if (seen.has(p.id)) { issues.push(`分页 id 重复（${p.id}），已跳过后者`); return false; }
+      seen.add(p.id);
+      return true;
+    });
+    out.pages.forEach((p, i) => {
+      const kept = (Array.isArray(p.siteIds) ? p.siteIds : []).filter(isId);
+      if (canCheck) {
+        const known = kept.filter((x) => slotIds.has(x));
+        if (known.length !== kept.length) issues.push(`第 ${i + 1} 页清理了 ${kept.length - known.length} 个悬空引用`);
+        p.siteIds = known;
+      } else {
+        p.siteIds = kept;
+      }
+      p.name = String(p.name || `第 ${i + 1} 页`).slice(0, 60);
+    });
+  }
+  if (!out.pages || !out.pages.length) {
+    out.pages = [{ id: uid('page'), name: '第 1 页', siteIds: [], sortOrder: 0 }];
+    issues.push('备份没有可用分页，已补一页');
+  }
+  return { ok: true, data: out, issues };
+}
+
+export async function importAll(data) {
+  const check = sanitizeImport(data);
+  if (!check.ok) throw new Error(check.reason || '备份数据校验失败');
+  /* 只覆盖校验输出里真实存在的表（输入没有的表保持原样） */
+  await db.replaceAll(check.data);
   await hydrate();
   if (state.pages.length === 0) await seed();
   if (!state.pages.some((p) => p.id === state.currentPageId)) state.currentPageId = state.pages[0].id;
   /* 备份可能是在「隐藏小组件」时导出的：按当前配置补回槽位，再按容量重排 */
   await syncWidgetSlots();
   await reflowPages();
-  return state;
+  return { state, issues: check.issues };
 }

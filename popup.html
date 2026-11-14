@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="css/popup.css">
+  <title>TAB STUDIO</title>
+</head>
+<body>
+  <header class="hd">
+    <img src="icons/icon32.png" alt="" width="20" height="20">
+    <span>TAB STUDIO</span>
+  </header>
+
+  <main class="bd">
+    <div id="current-row" class="row">
+      <div class="cur-info">
+        <img id="cur-icon" class="cur-icon" alt="" width="24" height="24" hidden>
+        <div class="cur-text">
+          <div id="cur-title" class="cur-title">读取中…</div>
+          <div id="cur-host" class="cur-host"></div>
+        </div>
+      </div>
+    </div>
+
+    <button id="add-btn" class="primary" type="button">加入 TAB STUDIO</button>
+    <div id="msg" class="msg"></div>
+
+    <div class="divider"></div>
+
+    <div class="perm">
+      <div class="perm-item">
+        <span>读取浏览器书签</span>
+        <button id="perm-bookmarks" class="ghost" type="button">开启</button>
+      </div>
+      <div class="perm-item">
+        <span>读取浏览器历史</span>
+        <button id="perm-history" class="ghost" type="button">开启</button>
+      </div>
+    </div>
+    <p class="note">书签 / 历史为可选权限，开启后可在新标签页导入；随时可在扩展设置里撤销。</p>
+  </main>
+
+  <footer class="ft">
+    <a id="open-newtab" href="#">打开新标签页工作台</a>
+  </footer>
+
+  <script type="module" src="js/popup.js"></script>
+</body>
+</html>

@@ -5,18 +5,18 @@ import { toast, readFileAsDataURL, compressImage, downloadFile } from './utils.j
 import { confirmAction } from './dialog.js';
 
 const BUILTINS = [
-  { id: 'builtin-01', name: '高地晨雾', file: 'images/wallpapers/wp01.jpg' },
-  { id: 'builtin-02', name: '林间光束', file: 'images/wallpapers/wp02.jpg' },
-  { id: 'builtin-03', name: '湖光山色', file: 'images/wallpapers/wp03.jpg' },
-  { id: 'builtin-04', name: '山谷湖泊', file: 'images/wallpapers/wp04.jpg' },
-  { id: 'builtin-05', name: '雪山星空', file: 'images/wallpapers/wp05.jpg' },
-  { id: 'builtin-06', name: '落日群山', file: 'images/wallpapers/wp06.jpg' },
-  { id: 'builtin-07', name: '海岸线', file: 'images/wallpapers/wp07.jpg' },
-  { id: 'builtin-08', name: '绿色丘陵', file: 'images/wallpapers/wp08.jpg' },
-  { id: 'builtin-09', name: '瀑布', file: 'images/wallpapers/wp09.jpg' },
-  { id: 'builtin-10', name: '森林小径', file: 'images/wallpapers/wp10.jpg' },
-  { id: 'builtin-11', name: '雪山湖泊', file: 'images/wallpapers/wp11.jpg' },
-  { id: 'builtin-12', name: '原野', file: 'images/wallpapers/wp12.jpg' },
+  { id: 'builtin-01', name: '高地晨雾', file: 'images/wallpapers/wp01.webp' },
+  { id: 'builtin-02', name: '林间光束', file: 'images/wallpapers/wp02.webp' },
+  { id: 'builtin-03', name: '湖光山色', file: 'images/wallpapers/wp03.webp' },
+  { id: 'builtin-04', name: '山谷湖泊', file: 'images/wallpapers/wp04.webp' },
+  { id: 'builtin-05', name: '雪山星空', file: 'images/wallpapers/wp05.webp' },
+  { id: 'builtin-06', name: '落日群山', file: 'images/wallpapers/wp06.webp' },
+  { id: 'builtin-07', name: '海岸线', file: 'images/wallpapers/wp07.webp' },
+  { id: 'builtin-08', name: '绿色丘陵', file: 'images/wallpapers/wp08.webp' },
+  { id: 'builtin-09', name: '瀑布', file: 'images/wallpapers/wp09.webp' },
+  { id: 'builtin-10', name: '森林小径', file: 'images/wallpapers/wp10.webp' },
+  { id: 'builtin-11', name: '雪山湖泊', file: 'images/wallpapers/wp11.webp' },
+  { id: 'builtin-12', name: '原野', file: 'images/wallpapers/wp12.webp' },
 ];
 
 let currentId = null;
@@ -110,6 +110,12 @@ export async function seedWallpapers() {
   for (const item of BUILTINS) {
     if (!existing.has(item.id)) {
       await addWallpaper({ id: item.id, src: item.file, type: 'builtin', name: item.name });
+    } else {
+      /* v2.3 起内置壁纸换成 webp，把老用户库里的旧路径迁过去（文件已不存在时） */
+      const wp = getWallpaper(item.id);
+      if (wp && /\.jpg$/i.test(wp.src || '') && wp.src !== item.file) {
+        await updateWallpaper(item.id, { src: item.file });
+      }
     }
   }
 }
@@ -162,7 +168,8 @@ function tile(wp) {
     try {
       const res = await fetch(wp.src);
       const blob = await res.blob();
-      downloadFile(`wallpaper-${wp.id}.jpg`, blob, 'image/jpeg');
+      const ext = blob.type.includes('webp') ? 'webp' : blob.type.includes('png') ? 'png' : 'jpg';
+      downloadFile(`wallpaper-${wp.id}.${ext}`, blob, blob.type || 'image/jpeg');
     } catch (err) { toast('下载失败'); }
   });
   actions.appendChild(dlBtn);

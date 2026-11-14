@@ -58,6 +58,24 @@ for ref in re.findall(r'(?:href|src)="([^"]+)"', html):
     if not (ROOT / ref).exists():
         errors.append(f'{html_path.name} 引用的资源不存在：{ref}')
 
+# popup 页面（工具栏入口）：检查资源引用，并把其 id 并入允许集合
+popup = manifest.get('action', {}).get('default_popup')
+if popup:
+    popup_path = ROOT / popup
+    if not popup_path.exists():
+        errors.append(f'manifest 声明的 popup 不存在：{popup}')
+    else:
+        popup_html = popup_path.read_text(encoding='utf-8')
+        html_ids |= set(re.findall(r'\bid="([^"]+)"', popup_html))
+        for ref in re.findall(r'(?:href|src)="([^"]+)"', popup_html):
+            if ref.startswith(('http://', 'https://', '#', 'data:')):
+                continue
+            if not (ROOT / ref).exists():
+                errors.append(f'{popup} 引用的资源不存在：{ref}')
+for _size, rel in (manifest.get('action', {}).get('default_icon') or {}).items():
+    if not (ROOT / rel).exists():
+        errors.append(f'action 图标缺失：{rel}')
+
 DYNAMIC_IDS = {
     'wp-name', 'wp-type', 'wp-thumb', 'font-color-picker', 'engine-menu', 'bd-perm-btn',
 }
@@ -82,7 +100,7 @@ for css in sorted((ROOT / 'css').glob('*.css')):
             errors.append(f'{css.name} 引用的资源不存在：{ref}')
 
 wp_dir = ROOT / 'images' / 'wallpapers'
-wallpapers = sorted(wp_dir.glob('*.jpg')) if wp_dir.exists() else []
+wallpapers = sorted(wp_dir.glob('*.webp')) or sorted(wp_dir.glob('*.jpg')) if wp_dir.exists() else []
 if len(wallpapers) < 8:
     warnings.append(f'内置壁纸只有 {len(wallpapers)} 张，建议 ≥ 8 张')
 

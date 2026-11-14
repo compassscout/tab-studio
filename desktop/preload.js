@@ -30,4 +30,7 @@ contextBridge.exposeInMainWorld('desktop', {
 
   /** 菜单快捷键：add / folder / wallpaper / settings / search */
   onShortcut: (handler) => subscribe('studio:shortcut', handler),
+
+  /** 新版本检查结果：{ version, url } */
+  onUpdateAvailable: (handler) => subscribe('studio:update', handler),
 });

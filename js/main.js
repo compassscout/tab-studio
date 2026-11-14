@@ -15,7 +15,7 @@ import { initDrag } from './drag.js';
 import { initDock, pinToDock, unpinFromDock, dockMenu } from './dock.js';
 import { openHistory, openBookmarks, initBrowserData } from './browserdata.js';
 import { openLibrary } from './wallpaper.js';
-import { toast, hasDesktop } from './utils.js';
+import { toast, toastAction, hasDesktop } from './utils.js';
 
 /* 首次运行：数据与联网说明（商业化发布所需的披露，同时也是一次性告知） */
 function showPrivacyNotice() {
@@ -106,6 +106,18 @@ async function boot() {
           const input = document.getElementById('search-input');
           if (input) { input.focus(); input.select(); }
         }
+      });
+    } catch (e) { /* 忽略 */ }
+  }
+
+  /* 桌面壳：新版本检查（仅安装版会收到，点击跳转下载页） */
+  if (hasDesktop() && window.desktop.onUpdateAvailable) {
+    try {
+      window.desktop.onUpdateAvailable((info) => {
+        if (!info || !info.version) return;
+        toastAction(`发现新版本 v${info.version}，点击下载`, '下载', () => {
+          if (info.url) window.desktop.openExternal(info.url).catch(() => {});
+        }, 12000);
       });
     } catch (e) { /* 忽略 */ }
   }

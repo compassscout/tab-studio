@@ -1,8 +1,9 @@
 @echo off
+chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 title TAB STUDIO
-rem Ä³Ğ©¹¤¾ß»á²ĞÁôÕâ¸ö±äÁ¿£¬Ëü»áÈÃ Electron ±ä³É´¿ Node Ä£Ê½µ¼ÖÂ²»Æô¶¯
+rem æŸäº›å·¥å…·ä¼šæ®‹ç•™è¿™ä¸ªå˜é‡ï¼Œå®ƒä¼šè®© Electron å˜æˆçº¯ Node æ¨¡å¼å¯¼è‡´ä¸å¯åŠ¨
 set "ELECTRON_RUN_AS_NODE="
 
 set "ELECTRON_EXE=node_modules\electron\dist\electron.exe"
@@ -10,8 +11,8 @@ set "ELECTRON_EXE=node_modules\electron\dist\electron.exe"
 if exist "%ELECTRON_EXE%" goto launch
 
 echo.
-echo [1/2] Ê×´ÎÆô¶¯£¬ÕıÔÚ°²×°ÔËĞĞ»·¾³£¨Ô¼ 100MB£¬Ö»×°Ò»´Î£©
-echo       ÒÑÅäÖÃ¹úÄÚ¾µÏñ£¬ÉÔµÈ¼´¿É¡£
+echo [1/2] é¦–æ¬¡å¯åŠ¨ï¼Œæ­£åœ¨å®‰è£…è¿è¡Œç¯å¢ƒï¼ˆçº¦ 100MBï¼Œåªè£…ä¸€æ¬¡ï¼‰
+echo       å·²é…ç½®å›½å†…é•œåƒï¼Œç¨ç­‰å³å¯ã€‚
 echo.
 
 where node >nul 2>nul
@@ -24,23 +25,23 @@ if errorlevel 1 goto installfail
 if not exist "%ELECTRON_EXE%" goto installfail
 
 :launch
-echo [2/2] Æô¶¯ TAB STUDIO ...
-echo       ¸ÄÍêÔ´Âë°´ Ctrl+R Á¢¼´ÉúĞ§£¬F12 ´ò¿ª¿ª·¢Õß¹¤¾ß¡£
+echo [2/2] å¯åŠ¨ TAB STUDIO ...
+echo       æ”¹å®Œæºç æŒ‰ Ctrl+R ç«‹å³ç”Ÿæ•ˆï¼ŒF12 æ‰“å¼€å¼€å‘è€…å·¥å…·ã€‚
 echo.
 "%ELECTRON_EXE%" .
 if errorlevel 1 goto runfail
 goto end
 
 :nonode
-echo [´íÎó] Ã»ÓĞÕÒµ½ Node.js£¬ÎŞ·¨°²×°ÔËĞĞ»·¾³¡£
-echo ÇëÏÈ°²×° Node.js 18 »ò¸ü¸ß°æ±¾£ºhttps://nodejs.org
+echo [é”™è¯¯] æ²¡æœ‰æ‰¾åˆ° Node.jsï¼Œæ— æ³•å®‰è£…è¿è¡Œç¯å¢ƒã€‚
+echo è¯·å…ˆå®‰è£… Node.js 18 æˆ–æ›´é«˜ç‰ˆæœ¬ï¼šhttps://nodejs.org
 echo.
 pause
 goto end
 
 :installfail
 echo.
-echo [´íÎó] ÒÀÀµ°²×°Ê§°Ü¡£¿ÉÊÖ¶¯ÔÚ±¾Ä¿Â¼Ö´ĞĞ£º
+echo [é”™è¯¯] ä¾èµ–å®‰è£…å¤±è´¥ã€‚å¯æ‰‹åŠ¨åœ¨æœ¬ç›®å½•æ‰§è¡Œï¼š
 echo   npm install --registry=https://registry.npmmirror.com
 echo.
 pause
@@ -48,7 +49,7 @@ goto end
 
 :runfail
 echo.
-echo [´íÎó] ³ÌĞòÒì³£ÍË³ö£¬Çë°ÑÉÏÃæµÄ±¨´íĞÅÏ¢Áô´æ¡£
+echo [é”™è¯¯] ç¨‹åºå¼‚å¸¸é€€å‡ºï¼Œè¯·æŠŠä¸Šé¢çš„æŠ¥é”™ä¿¡æ¯ç•™å­˜ã€‚
 pause
 
 :end

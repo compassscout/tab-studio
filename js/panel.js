@@ -185,6 +185,7 @@ async function doExport() {
   const payload = {
     version: 2,
     app: 'compass-newtab',
+    formatVersion: 1,
     exportedAt: nowISO(),
     data: { ...data, config: loadConfig() },
   };
@@ -208,7 +209,8 @@ async function doImport(file) {
   const ok = await confirmAction('导入会覆盖当前站点、文件夹、分页与设置，确定继续？', { okText: '导入', danger: true });
   if (!ok) return;
   try {
-    await importAll(parsed.data);
+    /* 记录级校验：畸形条目跳过，结构性问题在写库前抛出（现有数据不动） */
+    const { issues } = await importAll({ ...parsed.data, formatVersion: parsed.formatVersion });
     if (parsed.data.config && typeof parsed.data.config === 'object') {
       saveConfig(parsed.data.config, { silent: true });
       applyConfig(loadConfig());
@@ -220,9 +222,10 @@ async function doImport(file) {
     refreshProfile();
     refreshThumb();
     if (!getState().wallpapers.some((w) => w.id === loadMeta().wallpaperId)) randomNext();
-    toast('导入完成');
+    if (issues && issues.length) toast(`导入完成，但跳过了 ${issues.length} 处异常数据`, 5200);
+    else toast('导入完成');
   } catch (e) {
-    toast('导入失败，数据可能未完整恢复');
+    toast(e && e.message ? `导入被拒绝：${e.message}（现有数据未改动）` : '导入失败，现有数据未改动', 5200);
   }
 }
 
@@ -352,7 +355,7 @@ export function initPanel() {
   });
 
   document.getElementById('restore-backup-btn')?.addEventListener('click', async () => {
-    const ts = latestBackupTime();
+    const ts = await latestBackupTime();
     if (!ts) { toast('还没有自动备份（每天首次打开时生成一份）'); return; }
     const when = new Date(ts).toLocaleString();
     const ok = await confirmAction(`将用 ${when} 的快照覆盖当前的站点、文件夹、分页与待办。壁纸和设置不受影响。`, { okText: '恢复' });

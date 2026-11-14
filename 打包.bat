@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 title TAB STUDIO Pack
@@ -7,7 +8,7 @@ set "ELECTRON_EXE=node_modules\electron\dist\electron.exe"
 
 if exist "%ELECTRON_EXE%" goto build
 
-echo [1/3] °²×°ÒÀÀµ ...
+echo [1/3] å®‰è£…ä¾èµ– ...
 where node >nul 2>nul
 if errorlevel 1 goto nonode
 
@@ -19,7 +20,7 @@ if not exist "%ELECTRON_EXE%" goto installfail
 
 :build
 echo.
-echo [2/3] ¿ªÊ¼´ò°ü£¨Ê×´Î»áÏÂÔØ´ò°ü¹¤¾ß£¬±È½ÏÂı£©...
+echo [2/3] å¼€å§‹æ‰“åŒ…ï¼ˆé¦–æ¬¡ä¼šä¸‹è½½æ‰“åŒ…å·¥å…·ï¼Œæ¯”è¾ƒæ…¢ï¼‰...
 echo.
 set "ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/"
 set "ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/"
@@ -27,26 +28,26 @@ call npm run dist
 if errorlevel 1 goto buildfail
 
 echo.
-echo [3/3] Íê³É£¬²úÎïÔÚ release ÎÄ¼ş¼Ğ£º
-echo   TAB-STUDIO-°æ±¾-x64.exe       °²×°°æ
-echo   TAB-STUDIO-°æ±¾-portable.exe  Ãâ°²×°°æ
+echo [3/3] å®Œæˆï¼Œäº§ç‰©åœ¨ release æ–‡ä»¶å¤¹ï¼š
+echo   TAB-STUDIO-ç‰ˆæœ¬-x64.exe       å®‰è£…ç‰ˆ
+echo   TAB-STUDIO-ç‰ˆæœ¬-portable.exe  å…å®‰è£…ç‰ˆ
 echo.
 if exist "release" start "" explorer "release"
 pause
 goto end
 
 :nonode
-echo [´íÎó] Ã»ÓĞÕÒµ½ Node.js£¬ÇëÏÈ°²×°£ºhttps://nodejs.org
+echo [é”™è¯¯] æ²¡æœ‰æ‰¾åˆ° Node.jsï¼Œè¯·å…ˆå®‰è£…ï¼šhttps://nodejs.org
 pause
 goto end
 
 :installfail
-echo [´íÎó] ÒÀÀµ°²×°Ê§°Ü£¬Çë²é¿´ÉÏÃæµÄÊä³ö¡£
+echo [é”™è¯¯] ä¾èµ–å®‰è£…å¤±è´¥ï¼Œè¯·æŸ¥çœ‹ä¸Šé¢çš„è¾“å‡ºã€‚
 pause
 goto end
 
 :buildfail
-echo [´íÎó] ´ò°üÊ§°Ü£¬Çë²é¿´ÉÏÃæµÄÊä³ö¡£
+echo [é”™è¯¯] æ‰“åŒ…å¤±è´¥ï¼Œè¯·æŸ¥çœ‹ä¸Šé¢çš„è¾“å‡ºã€‚
 pause
 
 :end

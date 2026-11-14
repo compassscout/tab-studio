@@ -8,3 +8,5 @@ npm-debug.log*
 Thumbs.db
 desktop/.smoke/
 screenshots/desktop-*.png
+__pycache__/
+*.pyc

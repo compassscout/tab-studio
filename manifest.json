@@ -8,6 +8,15 @@
   },
   "permissions": ["storage", "tabs", "favicon"],
   "optional_permissions": ["bookmarks", "history"],
+  "action": {
+    "default_title": "TAB STUDIO",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
   "host_permissions": [
     "https://www.bing.com/*",
     "https://suggestqueries.google.com/*",

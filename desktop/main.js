@@ -402,6 +402,48 @@ function setupSession() {
   });
 }
 
+/* ---------------- 新版本检查（仅打包版，不自动下载/安装） ---------------- */
+
+const RELEASE_REPO = 'compassscout/tab-studio';
+
+/** 语义化版本比较：a>b 返回 1，a<b 返回 -1，相等 0 */
+function compareVersions(a, b) {
+  const pa = String(a || '').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b || '').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x > y ? 1 : -1;
+  }
+  return 0;
+}
+
+async function checkForUpdate() {
+  try {
+    const res = await net.fetch(`https://api.github.com/repos/${RELEASE_REPO}/releases/latest`, {
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'TAB-STUDIO-desktop' },
+    });
+    if (!res.ok) return;
+    const info = await res.json();
+    const latest = (info && info.tag_name) || '';
+    const current = app.getVersion();
+    if (!latest || compareVersions(latest, current) <= 0) return;
+    /* 优先免安装版资源，没有就退回 release 页面 */
+    const assets = Array.isArray(info.assets) ? info.assets : [];
+    const pick = assets.find((x) => /portable/i.test(x.name)) || assets.find((x) => /\.exe$/i.test(x.name));
+    const url = (pick && pick.browser_download_url) || info.html_url;
+    const payload = { version: String(latest).replace(/^v/i, ''), url: String(url || '') };
+    /* 页面监听器在 boot 里注册，留一点余量再推送 */
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('studio:update', payload);
+      }
+    }, 2500);
+  } catch (e) {
+    /* 离线或接口异常：静默，不打扰 */
+  }
+}
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -436,6 +478,8 @@ if (!gotLock) {
 
     if (IS_SMOKE) runSmoke();
     if (IMPORT_FILE) runImportTest(IMPORT_FILE);
+    /* 只有安装后的正式包才检查更新：源码运行版本永远最新，没必要问 GitHub */
+    if (app.isPackaged && !IS_SMOKE && !IMPORT_FILE) setTimeout(checkForUpdate, 8000);
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -467,8 +511,9 @@ function runImportTest(file) {
       const result = await mainWindow.webContents.executeJavaScript(`(async () => {
         const data = ${JSON.stringify(json)};
         const { importAll } = await import('./js/store.js');
-        const st = await importAll(JSON.parse(data).data);
-        return { sites: st.sites.length, folders: st.folders.length, pages: st.pages.length };
+        const parsed = JSON.parse(data);
+        const { state: st, issues } = await importAll({ ...parsed.data, formatVersion: parsed.formatVersion });
+        return { sites: st.sites.length, folders: st.folders.length, pages: st.pages.length, issues: (issues || []).length };
       })()`, true);
       console.log('[import] imported:', JSON.stringify(result));
       mainWindow.webContents.invalidate();
@@ -693,9 +738,12 @@ function runSmoke() {
       }))()`, true);
       console.log('[smoke] page:', JSON.stringify(info));
       console.log('[smoke] errors:', errors.length ? JSON.stringify(errors.slice(0, 12)) : 'none');
+      if (!info.booted) errors.push('页面未启动完成（__APP_BOOTED__ 缺失）');
     } catch (e) {
       console.log('[smoke] failed:', e && e.message);
+      errors.push(String(e && e.message));
     }
-    setTimeout(() => app.exit(0), 300);
+    const code = errors.length ? 1 : 0;
+    setTimeout(() => app.exit(code), 300);
   });
 }
