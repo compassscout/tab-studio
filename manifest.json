@@ -2,14 +2,21 @@
   "manifest_version": 3,
   "name": "TAB STUDIO",
   "description": "TAB STUDIO — Infinity 风格新标签页：真实网站图标、高清壁纸库、3×6 大图标网格、macOS 风格 Dock、文件夹、多分页、待办/笔记/天气小组件与本地备份。",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
-  "permissions": ["storage", "tabs", "favicon"],
-  "optional_permissions": ["bookmarks", "history"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "favicon"
+  ],
+  "optional_permissions": [
+    "bookmarks",
+    "history"
+  ],
   "action": {
-    "default_title": "TAB STUDIO",
+    "default_title": "TAB STUDIO — 把当前网页加为图标",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -35,8 +42,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["_favicon/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "_favicon/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "content_security_policy": {

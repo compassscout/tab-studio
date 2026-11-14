@@ -70,6 +70,11 @@ export async function initStore() {
   await hydrate();
   const migrated = await migrateFromV1();
   if (!migrated) await seed();
+  /* 记住上次浏览的分页：工具栏弹窗「添加标签」按它决定收藏到哪一页 */
+  const meta = loadMeta();
+  if (meta.currentPageId && state.pages.some((p) => p.id === meta.currentPageId)) {
+    state.currentPageId = meta.currentPageId;
+  }
   return state;
 }
 
@@ -150,7 +155,10 @@ export function currentPageIndex() {
   return Math.max(0, state.pages.findIndex((p) => p.id === page.id));
 }
 export function setCurrentPage(id) {
-  if (state.pages.some((p) => p.id === id)) state.currentPageId = id;
+  if (state.pages.some((p) => p.id === id)) {
+    state.currentPageId = id;
+    saveMeta({ currentPageId: id });
+  }
 }
 export function getSite(id) { return state.sites.find((s) => s.id === id) || null; }
 export function getFolder(id) { return state.folders.find((f) => f.id === id) || null; }

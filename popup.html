@@ -3,31 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="css/popup.css">
-  <title>TAB STUDIO</title>
+  <title>添加标签 — TAB STUDIO</title>
 </head>
 <body>
   <header class="hd">
     <img src="icons/icon32.png" alt="" width="20" height="20">
-    <span>TAB STUDIO</span>
+    <span>添加标签</span>
+    <span id="cur-host" class="hd-host"></span>
   </header>
 
   <main class="bd">
-    <div id="current-row" class="row">
-      <div class="cur-info">
-        <img id="cur-icon" class="cur-icon" alt="" width="24" height="24" hidden>
-        <div class="cur-text">
-          <div id="cur-title" class="cur-title">读取中…</div>
-          <div id="cur-host" class="cur-host"></div>
-        </div>
+    <label class="row">
+      <span class="row-label">网站名称</span>
+      <input id="f-name" type="text" placeholder="网站名称" autocomplete="off" spellcheck="false">
+    </label>
+
+    <label class="row">
+      <span class="row-label">网址</span>
+      <input id="f-url" type="text" placeholder="https://" autocomplete="off" spellcheck="false">
+    </label>
+
+    <div class="field">
+      <div class="row-label">选择图标</div>
+      <div class="icon-opts" id="icon-opts">
+        <button type="button" class="icon-opt active" data-mode="auto">
+          <span class="opt-preview" id="pv-auto"></span>
+          <span class="opt-cap">网站图标</span>
+        </button>
+        <button type="button" class="icon-opt" data-mode="color">
+          <span class="opt-preview" id="pv-color"></span>
+          <span class="opt-cap">纯色图标</span>
+        </button>
+        <button type="button" class="icon-opt" data-mode="upload">
+          <span class="opt-preview opt-empty" id="pv-upload">＋</span>
+          <span class="opt-cap">本地图片</span>
+        </button>
       </div>
+      <input type="file" id="f-file" accept="image/*" hidden>
     </div>
 
-    <button id="add-btn" class="primary" type="button">加入 TAB STUDIO</button>
+    <label class="row">
+      <span class="row-label">图标文字</span>
+      <input id="f-text" type="text" placeholder="显示名称" autocomplete="off" spellcheck="false">
+    </label>
+
+    <div class="row range-row">
+      <span class="row-label">字体大小</span>
+      <input id="f-font" type="range" min="10" max="24" step="1">
+      <b id="font-val" class="font-val">13</b>
+    </div>
+
+    <div class="field" id="color-field">
+      <div class="row-label">颜色</div>
+      <div class="colors" id="color-row"></div>
+    </div>
+
+    <div class="actions">
+      <button id="cancel-btn" class="btn" type="button">取消</button>
+      <button id="confirm-btn" class="primary" type="button">确定</button>
+    </div>
     <div id="msg" class="msg"></div>
+  </main>
 
-    <div class="divider"></div>
-
-    <div class="perm">
+  <footer class="ft">
+    <a id="perm-toggle" href="#">书签 / 历史权限</a>
+    <div id="perm-box" class="perm" hidden>
       <div class="perm-item">
         <span>读取浏览器书签</span>
         <button id="perm-bookmarks" class="ghost" type="button">开启</button>
@@ -36,11 +76,8 @@
         <span>读取浏览器历史</span>
         <button id="perm-history" class="ghost" type="button">开启</button>
       </div>
+      <p class="note">可选权限，开启后可在新标签页导入；随时可在扩展设置里撤销。</p>
     </div>
-    <p class="note">书签 / 历史为可选权限，开启后可在新标签页导入；随时可在扩展设置里撤销。</p>
-  </main>
-
-  <footer class="ft">
     <a id="open-newtab" href="#">打开新标签页工作台</a>
   </footer>
 
